@@ -51,41 +51,9 @@ public class PeerDAO {
 	/** The statement. */
 	Statement statement;
 
-
-	/** 
-	 * Upload file as master server into table PeerFiles
-	 */
-	public boolean uploadFile(String filePath,String fileName, int fileSize, int fileVersion) throws SQLException{
-		try {
-			conn = PeerHSQLDB.getConnection();
-			String id = ID_Generator.generateID();
-			String sql = "insert into PeerFiles values (?,?,?,?,?)";
-			stmt = conn.prepareStatement(sql);
-			stmt.setString(1, id);
-			stmt.setString(2, filePath);
-			stmt.setString(3, fileName);
-			stmt.setInt(4, fileSize);
-			stmt.setInt(5, fileVersion);
-			stmt.executeUpdate();
-
-			
-		} finally {
-			try {
-				stmt.close();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			} finally {
-				try {
-					conn.close();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-		}return true;
-	}
 	
 	/**
-	 * insert into 'PeerDownloadedFiles' table with file path,file name and file size
+	 * insert into 'PeerFiles' table with file path,file name and file size
 	 * 
 	 * @param filePath
 	 *            the file path
@@ -97,22 +65,17 @@ public class PeerDAO {
 	 * @throws SQLException
 	 *             the sQL exception
 	 */
-	public boolean insertFile(String filePath, String fileName, int fileSize, 
-									int fileVersion,String fileState, String originServerIP, String originServerPort) throws SQLException {
+	public boolean insertFile(String filePath, String fileName, int fileSize) throws SQLException {
 
 		try {
 			conn = PeerHSQLDB.getConnection();
 			String id = ID_Generator.generateID();
-			String sql = "insert into PeerDownloadedFiles values (?,?,?,?,?,?,?,?)";
+			String sql = "insert into PeerFiles values (?,?,?,?)";
 			stmt = conn.prepareStatement(sql);
 			stmt.setString(1, id);
 			stmt.setString(2, filePath);
 			stmt.setString(3, fileName);
 			stmt.setInt(4, fileSize);
-			stmt.setInt(5, fileVersion);
-			stmt.setString(6, fileState);
-			stmt.setString(7, originServerIP);
-			stmt.setString(8, originServerPort);
 			stmt.executeUpdate();
 
 			return true;
@@ -131,39 +94,6 @@ public class PeerDAO {
 		}
 	}
 
-	public boolean updateFileVersion(String fileName) throws SQLException {
-		
-		if (!isModifiable(fileName))
-			return false;
-		
-		try {
-			conn = PeerHSQLDB.getConnection();
-			statement = conn.createStatement();
-			String sql = "select file_version from PeerFiles where file_name like '" + fileName + "'";
-			result = statement.executeQuery(sql);
-			String num = "";
-			while (result.next()) {
-				num = result.getString(1);
-				System.out.println("version is : " + num);
-			}
-			Integer versionNumber = Integer.parseInt(num);
-			sql = "UPDATE PeerFiles SET file_version='" + versionNumber++ + "' where file_name like '" + fileName + "'";
-			statement.executeUpdate(sql);
-			return true;
-		} finally {
-			try {
-				stmt.close();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			} finally {
-				try {
-					conn.close();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-	}
 	 
 	/**
 	 * delete a specific file from PeerFiles table
@@ -207,12 +137,12 @@ public class PeerDAO {
 	 * @throws SQLException
 	 *             the sQL exception
 	 */
-	public String findFile(String fileName, String tableName) throws SQLException {
+	public String findFile(String fileName) throws SQLException {
 
 		try {
 			conn = PeerHSQLDB.getConnection();
 			statement = conn.createStatement();
-			String sql = "select file_path from "+ tableName +" where file_name like '" + fileName + "'";
+			String sql = "select file_path from PeerFiles where file_name like '" + fileName + "'";
 			result = statement.executeQuery(sql);
 			while (result.next()) {
 				return result.getString(1);
@@ -243,43 +173,14 @@ public class PeerDAO {
 	 * @throws SQLException
 	 *             the sQL exception
 	 */
-	public boolean checkFileAvailable(String fileName, String tableName) throws SQLException {
+	public boolean checkFileAvailable(String fileName) throws SQLException {
 
-		if (findFile(fileName,tableName) != null)
+		if (findFile(fileName) != null)
 			return true;
 		return false;
 	}
-	
-	public boolean isModifiable(String fileName) throws SQLException {
-		if(findFile(fileName,"PeerFiles") != null)
-			return true;
-		return false;
-	}
+
 	 
-	public void markDirty(String fileName) throws SQLException{
-		try {
-			conn = PeerHSQLDB.getConnection();
-			statement = conn.createStatement();
-			String sql = "UPDATE PeerDownloadedFiles SET file_state= 'invalid' where file_name like '" + fileName + "'";
-			statement.executeUpdate(sql);
-
-		} finally {
-			try {
-				stmt.close();
-			} catch (SQLException e) {
-				e.printStackTrace();
-			} finally {
-				try {
-					conn.close();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		
-	}
-	
-	
 	/**
 	 * get all files in the database
 	 * 
@@ -357,6 +258,8 @@ public class PeerDAO {
 	
 	public void addMessage(String messageId,String upstream_ip,String upstream_port, Date insert_time, Date expire_time ,String fileName) throws SQLException {
 		try {
+			System.out.println(insert_time.getTime());
+			System.out.println(expire_time.getTime());
 			conn = PeerHSQLDB.getConnection();
 			String sql = "insert into Messages values (?,?,?,?,?,?)";
 			stmt = conn.prepareStatement(sql);

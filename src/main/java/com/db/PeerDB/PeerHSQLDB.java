@@ -44,35 +44,16 @@ public class PeerHSQLDB {
 			Class.forName("org.hsqldb.jdbcDriver");
 			Connection conn = getConnection();
 			String fileTable = "PeerFiles";
-			String createFileTableSQL = "CREATE TABLE "+fileTable + " (" 
-					+ "id         VARCHAR(200)    NOT NULL primary key,"
-					+ "file_path         VARCHAR(200)                  NOT NULL," 
-					+ "file_name       VARCHAR(200)     NOT NULL,"
+			String createFileTableSQL = "CREATE TABLE "+fileTable + " (" + "id         VARCHAR(200)    NOT NULL primary key,"
+					+ "file_path         VARCHAR(200)                  NOT NULL," + "file_name       VARCHAR(200)     NOT NULL,"
 					+ "file_size	INT      NOT NULL, " 
-					+ "file_version		INT	    NOT NULL,"
 					+ " constraint unique_file_and_file_path UNIQUE ( file_path,file_size) )";
 			
-			String downloadFileTable = "PeerDownloadedFiles";
-			String creatDownloadFileTable = "CREATE TABLE "+downloadFileTable + " (" 
-					+ "id         VARCHAR(200)    NOT NULL primary key,"
-					+ "file_path         VARCHAR(200)                  NOT NULL," 
-					+ "file_name       VARCHAR(200)     NOT NULL,"
-					+ "file_size	INT      NOT NULL, " 
-					+ "file_version		INT		NOT NULL,"
-					+ "file_state		VARCHAR(200),"
-					+ "master_server_ip			VARCHAR(200),"
-					+ "master_server_port		VARCHAR(200),"
-					+ " constraint chkFileState CHECK (file_state LIKE 'valid' OR file_state LIKE 'invalid' OR file_state LIKE 'TTR expired'),"
-					+ " constraint unique_file_and_path UNIQUE ( file_path,file_size) )";
-			
 			String messageTable = "Messages";
-			String createMessageTableSQL = "CREATE TABLE "+messageTable + " (" 
-					+ "message_id         VARCHAR(200)    NOT NULL primary key,"
-					+ "upstream_ip         VARCHAR(200)                  NOT NULL," 
-					+ "upstream_port       VARCHAR(200)     NOT NULL,"
-					+ "time_insert	timestamp      NOT NULL,"
-					+ "time_expire	timestamp      NOT NULL ,"
-					+ "file_name VARCHAR(200)      NOT NULL )";
+			String createMessageTableSQL = "CREATE TABLE "+messageTable + " (" + "message_id         VARCHAR(200)    NOT NULL primary key,"
+					+ "upstream_ip         VARCHAR(200)                  NOT NULL," + "upstream_port       VARCHAR(200)     NOT NULL,"
+					+ "time_insert	timestamp      NOT NULL, time_expire	timestamp      NOT NULL , file_name VARCHAR(200)                  NOT NULL " 
+					+ " )";
 			
 			try {
 				if(!checkTableExists(conn, fileTable)) {
@@ -80,13 +61,6 @@ public class PeerHSQLDB {
 					stat.executeUpdate(createFileTableSQL);
 					stat.close();
 					LOGGER.info("Table " + fileTable + " creates successfully.");
-				}
-				
-				if(!checkTableExists(conn, downloadFileTable)) {
-					Statement stat = conn.createStatement();
-					stat.executeUpdate(creatDownloadFileTable);
-					stat.close();
-					LOGGER.info("Table " + downloadFileTable + " creates successfully.");
 				}
 				
 				if(!checkTableExists(conn, messageTable)) {

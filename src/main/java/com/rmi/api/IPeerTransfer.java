@@ -55,9 +55,5 @@ public interface IPeerTransfer extends Remote {
 	public void hitQuery(String messageId, int TTL, String fileName, String peerIP, String peerPort) throws RemoteException;
 
 	public void queryExpire(String messageId) throws RemoteException;
-	
-	public void invalidate(String messageID,String masterServerIP,String masterServerPort,String fileName) throws RemoteException;
-	
-	public void pull(String masterSeverIP, String masterServerPort, String fileName) throws RemoteException;
 
 }

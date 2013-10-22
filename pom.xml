@@ -11,7 +11,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>com.client.PeerTest</mainClass>
+							<mainClass>com.client.PeerWindow</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>

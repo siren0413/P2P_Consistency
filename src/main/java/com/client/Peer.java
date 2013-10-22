@@ -38,8 +38,6 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 
 import org.apache.log4j.Logger;
 
@@ -58,6 +56,8 @@ public class Peer {
 	/** The logger. */
 	private final Logger LOGGER = Logger.getLogger(Peer.class);
 
+	/** The window. */
+	private PeerWindow window;
 
 	/** The server ip. */
 	private String serverIP;
@@ -71,19 +71,14 @@ public class Peer {
 	/** The peer dao. */
 	private PeerDAO peerDAO;
 
-	private static BlockingQueue<String> downloadingQueue = new ArrayBlockingQueue<String>(100);
-	
-	public static BlockingQueue<String> getDownloadingQueue() {
-		return downloadingQueue;
-	}
-	
 	/**
 	 * Instantiates a new peer.
 	 * 
 	 * @param window
 	 *            the window
 	 */
-	public Peer() {
+	public Peer(PeerWindow window) {
+		this.window = window;
 		peerDAO = new PeerDAO();
 	}
 
@@ -94,76 +89,21 @@ public class Peer {
 	 *            the file
 	 * @return true, if successful
 	 */
-	public boolean shareFile(String fileName, String filePath) {
+	public boolean shareFile(File file) {
 		try {
 			// add the file to self database
-			boolean result2 = peerDAO.uploadFile(filePath, fileName, 100, 0);
+			boolean result2 = peerDAO.insertFile(file.getAbsolutePath(), file.getName(), 100);
 			if (result2)
-				LOGGER.info("insert file[" + fileName + "] to local database successfully!");
+				LOGGER.info("insert file[" + file.getName() + "] to local database successfully!");
 			else
 				return false;
 
 		} catch (SQLException e) {
-			LOGGER.error("Unable to register file [" + fileName + "] due to DAO error", e);
+			LOGGER.error("Unable to register file [" + file.getName() + "] due to DAO error", e);
 			return false;
 		}
 
 		return true;
-	}
-	
-	private class ModifyProcess implements Runnable{
-		private Object obj;
-		private String message_id;
-		private String fileName;
-		
-		public ModifyProcess(Object obj,String fileName) {
-			super();
-			this.obj = obj;
-			this.fileName = fileName;
-		}
-
-		public void run() {
-			try {
-				LOGGER.debug("invoke RMI: " + "rmi://" + obj + "/peerTransfer");
-				IPeerTransfer peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + obj + "/peerTransfer");
-				peerTransfer.invalidate(message_id,getServer_ip(), getServer_port(), fileName);
-			} catch (NotBoundException e) {
-				LOGGER.error("Remote call error", e);
-				return;
-			} catch (MalformedURLException e) {
-				LOGGER.error("Remote call error", e);
-				return;
-			} catch (RemoteException e) {
-				LOGGER.error("Remote call error", e);
-				return;
-			}
-
-		}
-		
-	}
-	
-	public void modifyFile(String fileName, String filePath) {
-		try {
-			LOGGER.info("Start modify file " + fileName + "...");
-			boolean updateFileVersion = peerDAO.updateFileVersion(fileName);
-			if (updateFileVersion == false) {
-				LOGGER.info("Cannot modify file [" + fileName+"]. Please check the database.");
-				return ;
-			}
-			LOGGER.info("File [" + fileName + "] modified successfully!");
-			LOGGER.info("Broadcast file modified message");
-			
-			PropertyUtil propertyUtil = new PropertyUtil("network.properties");
-			Collection<Object> values = propertyUtil.getProperties();
-			for (final Object obj : values) {
-			new Thread(new ModifyProcess(obj, fileName)).start();
-		}
-			
-		} catch (Exception e) {
-			LOGGER.error("ModifyFile[" + fileName +"] failed!");
-			e.printStackTrace();
-		}
-		
 	}
 
 	private class QueryProcess implements Runnable {
@@ -222,9 +162,7 @@ public class Peer {
 
 			PropertyUtil propertyUtil = new PropertyUtil("network.properties");
 			Collection<Object> values = propertyUtil.getProperties();
-			System.out.println("number of neibhours: " + values.size());
 			for (final Object obj : values) {
-				System.out.println("obj is :" + obj.toString());
 				new Thread(new QueryProcess(obj, message_id, fileName)).start();
 			}
 		} catch (UnknownHostException e2) {
@@ -245,7 +183,7 @@ public class Peer {
 			String element = null;
 			String[] destAddr = null;
 			try {
-				element = downloadingQueue.take();
+				element = PeerWindow.getDownloadingQueue().take();
 				destAddr = element.split(":");
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
@@ -259,7 +197,7 @@ public class Peer {
 			if (!file_name.equals(fileName)) {
 				LOGGER.debug("Destory previous downloading thread due to fileName not equal. expect[" + fileName + "], was[" + file_name + "]");
 				try {
-					downloadingQueue.put(element);
+					PeerWindow.getDownloadingQueue().put(element);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -285,7 +223,7 @@ public class Peer {
 			int left = length;
 			LOGGER.info("file size:" + length + " bytes");
 
-			File file = new File(savePath+"\\"+fileName);
+			File file = new File(savePath);
 			OutputStream out;
 			try {
 				out = new FileOutputStream(file);
@@ -295,23 +233,26 @@ public class Peer {
 			}
 
 			byte[] buffer;
-			
-//			LOGGER.info("download speed:" + Integer.valueOf(window.getTextField_DownloadLimit().getText()) + " KB/S");
+			window.getProgressBar().setMaximum(length);
+			window.getProgressBar().setVisible(true);
+			window.getProgressBar().setStringPainted(true);
 
-//			window.getTextArea().append(SystemUtil.getSimpleTime() + "Start downloading...\n");
+			LOGGER.info("download speed:" + Integer.valueOf(window.getTextField_DownloadLimit().getText()) + " KB/S");
+
+			window.getTextArea().append(SystemUtil.getSimpleTime() + "Start downloading...\n");
 
 			while (left > 0) {
 				try {
-			//		Thread.sleep(1000);
+					Thread.sleep(1000);
 
-					buffer = peerTransfer.obtain(fileName, start, 1024 * Integer.valueOf(5));
-					System.out.println("buffer :" + buffer.length);
+					buffer = peerTransfer.obtain(fileName, start, 1024 * Integer.valueOf(window.getTextField_DownloadLimit().getText()));
+
 					out.write(buffer);
 					left -= buffer.length;
 					start += buffer.length;
-//					window.getProgressBar().setValue(start);
-//					window.getProgressBar().setIndeterminate(false);
-//					window.getProgressBar().repaint();
+					window.getProgressBar().setValue(start);
+					window.getProgressBar().setIndeterminate(false);
+					window.getProgressBar().repaint();
 				} catch (Exception e) {
 					e.printStackTrace();
 					continue;
@@ -327,16 +268,16 @@ public class Peer {
 
 			if (result) {
 				LOGGER.info("download file successfully!");
-//				window.getTextArea().append(SystemUtil.getSimpleTime() + "Download complete!\n");
+				window.getTextArea().append(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
 					peerDAO.removeMessage(messageId);
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
-				Peer.getDownloadingQueue().clear();
+				PeerWindow.getDownloadingQueue().clear();
 				return true;
 			}
-//			window.getProgressBar().setVisible(false);
+			window.getProgressBar().setVisible(false);
 
 		}
 

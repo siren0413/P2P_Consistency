@@ -103,7 +103,7 @@ public class PeerWindow {
 
 	private PeerTransfer peerTransfer;
 
-	private static BlockingQueue<String> downloadingQueue = new ArrayBlockingQueue<String>(100);
+	private static BlockingQueue<String> downloadingQueue = new ArrayBlockingQueue<String>(100);;
 
 	/** The peer registry. */
 	Registry peerRegistry;
@@ -116,22 +116,16 @@ public class PeerWindow {
 	 *            the arguments
 	 */
 	public static void main(String[] args) {
-//		EventQueue.invokeLater(new Runnable() {
-//			public void run() {
-//				try {
-//					PeerWindow window = PeerWindow.getInstance();
-//					window.frame.setVisible(true);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		});
-		
-		// menu
-		// wait user input
-		// 1.
-		// 
-		System.out.println("running");
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					PeerWindow window = PeerWindow.getInstance();
+					window.frame.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
 
 	}
 
@@ -142,8 +136,8 @@ public class PeerWindow {
 	 */
 	private PeerWindow() throws RemoteException {
 		initialize();
-//		peer = new Peer(this);
-//		peerTransfer = new PeerTransfer(this);
+		peer = new Peer(this);
+		peerTransfer = new PeerTransfer(this);
 		PeerHSQLDB.initDB();
 	}
 
@@ -200,11 +194,11 @@ public class PeerWindow {
 				fileChooser.showOpenDialog(frame);
 				File[] files = fileChooser.getSelectedFiles();
 				for (File file : files) {
-//					if (peer.shareFile(file)) {
-//						textArea.append(SystemUtil.getSimpleTime() + "share file [" + file.getName() + "]\n");
-//					} else {
-//						textArea.append(SystemUtil.getSimpleTime() + "Unable to register file [" + file.getName() + "]\n");
-//					}
+					if (peer.shareFile(file)) {
+						textArea.append(SystemUtil.getSimpleTime() + "share file [" + file.getName() + "]\n");
+					} else {
+						textArea.append(SystemUtil.getSimpleTime() + "Unable to register file [" + file.getName() + "]\n");
+					}
 				}
 
 			}
