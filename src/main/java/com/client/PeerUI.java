@@ -44,7 +44,7 @@ public class PeerUI {
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
-			System.out.println("Enter other number to exit");
+			System.out.println("Enter -1 number to exit");
 
 			input = scanner.nextInt();
 			switch (input) {
@@ -83,16 +83,13 @@ public class PeerUI {
 						System.out.println(SystemUtil.getSimpleTime()+"File not found! Please check the file path.");
 					}
 					peer.modifyFile(file2);
+				case -1:
+					System.out.println("You choice to exit. Bye......");
+					flag = false;
 
 				default :
 					break;
 			}
-			System.out.println("Do you want to continue?");
-			System.out.println("Enter 'no' to exit. Enter 'yes' to continue.");
-			String con = scanner.next();
-			if (con.equals("no"))
-				flag = false;
-
 		}
 
 		System.out.println("Operation finished! Thank you!");
@@ -143,7 +140,7 @@ public class PeerUI {
 
 			@Override
 			public void run() {
-				System.out.println("Cleanup message table.");
+				System.out.println("Cleanup experied message from table.");
 				try {
 					new PeerDAO().removeExpiredMessages();
 				} catch (SQLException e) {
