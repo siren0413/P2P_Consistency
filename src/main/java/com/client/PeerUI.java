@@ -63,9 +63,10 @@ public class PeerUI {
 						System.out.println("File upload failed.");
 					break;
 				case 2 :
-					System.out.println("You choice to download file. Please give file name and saved path");
+					System.out.println("You choice to download file. Please give file name");
 					String fileName = scanner.next();
 					System.out.println("File name is : " + fileName);
+					System.out.println("Please give save file path.(including file name)");
 					String savePath = scanner.next();
 					System.out.println("File save path is : " + savePath);
 					boolean dl = peer.downloadFile(fileName, savePath);
