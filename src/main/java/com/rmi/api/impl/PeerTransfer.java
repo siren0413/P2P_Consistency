@@ -42,8 +42,9 @@ import java.util.Date;
 
 import org.apache.log4j.Logger;
 
+import com.System_Context;
 import com.cache.PeerMessage;
-import com.client.PeerWindow;
+import com.client.PeerUI;
 import com.dao.PeerDAO;
 import com.rmi.api.IPeerTransfer;
 import com.util.PropertyUtil;
@@ -51,18 +52,15 @@ import com.util.SystemUtil;
 
 @SuppressWarnings("serial")
 public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
-	/*
-	 * File transfer between peers
-	 */
 
 	private Logger LOGGER = Logger.getLogger(PeerTransfer.class);
 	private PeerDAO peerDAO = new PeerDAO();
-	private PeerWindow window;
 
-	public PeerTransfer(PeerWindow window) throws RemoteException {
+	
+	public PeerTransfer() throws RemoteException {
 		super();
-		this.window = window;
 	}
+
 
 	// download a file from a peer
 	public byte[] obtain(String fileName, int start, int length) throws RemoteException {
@@ -158,7 +156,7 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 					LOGGER.debug("hitquery, looping back to sender.");
 					LOGGER.debug("invoke remote object [" + "rmi://" + clentIp + ":" + service_port + "/peerTransfer]");
 					IPeerTransfer peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + clentIp + ":" + service_port + "/peerTransfer");
-					peerTransfer.hitQuery(messageId, TTL, fileName, InetAddress.getLocalHost().getHostAddress(), window.getTextField_servicePort().getText());
+					peerTransfer.hitQuery(messageId, TTL, fileName, InetAddress.getLocalHost().getHostAddress(), String.valueOf(System_Context.SERVICE_PORT));
 
 				}
 
@@ -215,7 +213,7 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 			try {
 				LOGGER.debug("invoke RMI: " + "rmi://" + obj + "/peerTransfer");
 				IPeerTransfer peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + obj + "/peerTransfer");
-				peerTransfer.query(message_id, TTL, fileName, window.getTextField_servicePort().getText());
+				peerTransfer.query(message_id, TTL, fileName,  String.valueOf(System_Context.SERVICE_PORT));
 			} catch (NotBoundException e) {
 				LOGGER.error("Remote call error", e);
 				return;
@@ -241,8 +239,7 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 			if (msg.getUpstream_ip().equals(InetAddress.getLocalHost().getHostAddress())) {
 				// the original sender, and put the peerIP and peerPort and
 				// fileName in queue.
-				PeerWindow.getDownloadingQueue().put(peerIP+":"+peerPort+":"+messageId+":"+fileName);
-				window.getTextArea().append(SystemUtil.getSimpleTime()+"Resource:"+fileName+" found available on "+peerIP+"\n");
+				System_Context.downloadingQueue.put(peerIP+":"+peerPort+":"+messageId+":"+fileName);
 			} else {
 				String upstream_ip = msg.getUpstream_ip();
 				String upstream_port = msg.getUpstream_port();

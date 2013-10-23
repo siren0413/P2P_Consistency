@@ -41,6 +41,7 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import com.System_Context;
 import com.cache.PeerInfo;
 import com.dao.PeerDAO;
 import com.rmi.api.IPeerTransfer;
@@ -56,17 +57,11 @@ public class Peer {
 	/** The logger. */
 	private final Logger LOGGER = Logger.getLogger(Peer.class);
 
-	/** The window. */
-	private PeerWindow window;
-
 	/** The server ip. */
 	private String serverIP;
 
 	/** The server port. */
 	private String serverPort;
-
-	/** The peer_service_port. */
-	private String peer_service_port;
 
 	/** The peer dao. */
 	private PeerDAO peerDAO;
@@ -77,8 +72,7 @@ public class Peer {
 	 * @param window
 	 *            the window
 	 */
-	public Peer(PeerWindow window) {
-		this.window = window;
+	public Peer() {
 		peerDAO = new PeerDAO();
 	}
 
@@ -92,7 +86,7 @@ public class Peer {
 	public boolean shareFile(File file) {
 		try {
 			// add the file to self database
-			boolean result2 = peerDAO.insertFile(file.getAbsolutePath(), file.getName(), 100);
+			boolean result2 = peerDAO.insertFile(file.getAbsolutePath(), file.getName(), (int)file.length());
 			if (result2)
 				LOGGER.info("insert file[" + file.getName() + "] to local database successfully!");
 			else
@@ -123,7 +117,7 @@ public class Peer {
 			try {
 				LOGGER.debug("invoke RMI: " + "rmi://" + obj + "/peerTransfer");
 				IPeerTransfer peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + obj + "/peerTransfer");
-				peerTransfer.query(message_id, 10, fileName, peer_service_port);
+				peerTransfer.query(message_id, 10, fileName, String.valueOf(System_Context.SERVICE_PORT));
 			} catch (NotBoundException e) {
 				LOGGER.error("Remote call error", e);
 				return;
@@ -156,9 +150,9 @@ public class Peer {
 		final String message_id = ID_Generator.generateID();
 
 		try {
-			peerDAO.addMessage(message_id, InetAddress.getLocalHost().getHostAddress(), peer_service_port, time_insert, time_expire, fileName);
+			peerDAO.addMessage(message_id, InetAddress.getLocalHost().getHostAddress(), String.valueOf(System_Context.SERVICE_PORT), time_insert, time_expire, fileName);
 
-			LOGGER.info("Add message to database. ip:" + InetAddress.getLocalHost().getHostAddress() + " port:" + peer_service_port + " file:" + fileName);
+			LOGGER.info("Add message to database. ip:" + InetAddress.getLocalHost().getHostAddress() + " port:" + String.valueOf(System_Context.SERVICE_PORT) + " file:" + fileName);
 
 			PropertyUtil propertyUtil = new PropertyUtil("network.properties");
 			Collection<Object> values = propertyUtil.getProperties();
@@ -183,7 +177,7 @@ public class Peer {
 			String element = null;
 			String[] destAddr = null;
 			try {
-				element = PeerWindow.getDownloadingQueue().take();
+				element = System_Context.downloadingQueue.take();
 				destAddr = element.split(":");
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
@@ -197,7 +191,7 @@ public class Peer {
 			if (!file_name.equals(fileName)) {
 				LOGGER.debug("Destory previous downloading thread due to fileName not equal. expect[" + fileName + "], was[" + file_name + "]");
 				try {
-					PeerWindow.getDownloadingQueue().put(element);
+					System_Context.downloadingQueue.put(element);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -223,6 +217,9 @@ public class Peer {
 			int left = length;
 			LOGGER.info("file size:" + length + " bytes");
 
+			if("".equals(savePath)) {
+				savePath = fileName;
+			}
 			File file = new File(savePath);
 			OutputStream out;
 			try {
@@ -233,26 +230,19 @@ public class Peer {
 			}
 
 			byte[] buffer;
-			window.getProgressBar().setMaximum(length);
-			window.getProgressBar().setVisible(true);
-			window.getProgressBar().setStringPainted(true);
-
-			LOGGER.info("download speed:" + Integer.valueOf(window.getTextField_DownloadLimit().getText()) + " KB/S");
-
-			window.getTextArea().append(SystemUtil.getSimpleTime() + "Start downloading...\n");
+			
+			System.out.println(SystemUtil.getSimpleTime()+"Start downloading...");
 
 			while (left > 0) {
 				try {
 					Thread.sleep(1000);
 
-					buffer = peerTransfer.obtain(fileName, start, 1024 * Integer.valueOf(window.getTextField_DownloadLimit().getText()));
+					buffer = peerTransfer.obtain(fileName, start, 1024 * System_Context.BAND_WIDTH);
 
 					out.write(buffer);
 					left -= buffer.length;
 					start += buffer.length;
-					window.getProgressBar().setValue(start);
-					window.getProgressBar().setIndeterminate(false);
-					window.getProgressBar().repaint();
+					System.out.println(SystemUtil.getSimpleTime()+"downloading complete: "+ Math.round((start/length)*100));
 				} catch (Exception e) {
 					e.printStackTrace();
 					continue;
@@ -268,19 +258,43 @@ public class Peer {
 
 			if (result) {
 				LOGGER.info("download file successfully!");
-				window.getTextArea().append(SystemUtil.getSimpleTime() + "Download complete!\n");
+				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
 					peerDAO.removeMessage(messageId);
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
-				PeerWindow.getDownloadingQueue().clear();
+				System_Context.downloadingQueue.clear();
 				return true;
 			}
-			window.getProgressBar().setVisible(false);
 
 		}
 
+	}
+	
+	
+	public void modifyFile(File filePath) {
+//		try {
+//			LOGGER.info("Start modify file " + fileName + "...");
+//			boolean updateFileVersion = peerDAO.updateFileVersion(fileName);
+//			if (updateFileVersion == false) {
+//				LOGGER.info("Cannot modify file [" + fileName+"]. Please check the database.");
+//				return ;
+//			}
+//			LOGGER.info("File [" + fileName + "] modified successfully!");
+//			LOGGER.info("Broadcast file modified message");
+//			
+//			PropertyUtil propertyUtil = new PropertyUtil("network.properties");
+//			Collection<Object> values = propertyUtil.getProperties();
+//			for (final Object obj : values) {
+//			new Thread(new ModifyProcess(obj, fileName)).start();
+//		}
+//			
+//		} catch (Exception e) {
+//			LOGGER.error("ModifyFile[" + fileName +"] failed!");
+//			e.printStackTrace();
+//		}
+		
 	}
 
 	/**
@@ -352,25 +366,6 @@ public class Peer {
 	 */
 	public void setServer_port(String server_port) {
 		this.serverPort = server_port;
-	}
-
-	/**
-	 * Gets the peer_service_port.
-	 * 
-	 * @return the peer_service_port
-	 */
-	public String getPeer_service_port() {
-		return peer_service_port;
-	}
-
-	/**
-	 * Sets the peer_service_port.
-	 * 
-	 * @param peer_service_port
-	 *            the new peer_service_port
-	 */
-	public void setPeer_service_port(String peer_service_port) {
-		this.peer_service_port = peer_service_port;
 	}
 
 }
