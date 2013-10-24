@@ -104,7 +104,47 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 		return (int) file.length();
 	}
 
-	public String getFilePath(String fileName) {
+	public String findFile(String fileName) throws RemoteException {
+		String filePath = null;
+		try {
+			filePath = peerDAO.findFile(fileName);
+		} catch (SQLException e) {
+			LOGGER.error("DAO error", e);
+		}
+		return filePath;
+	}
+	
+	public String getFileVersion(String fileName) throws RemoteException {
+		String fileVersion = null;
+		try {
+			fileVersion = peerDAO.getFileVersion(fileName);
+		} catch (SQLException e) {
+			LOGGER.error("DAO error", e);
+		}
+		return fileVersion;
+	}
+	
+	public String getFileState(String fileName) throws RemoteException {
+		String fileState = null;
+		try {
+			fileState = peerDAO.getFileState(fileName);
+		} catch (SQLException e) {
+			LOGGER.error("DAO error", e);
+		}
+		return fileState;
+	}
+	
+	public String getOwnerIp(String fileName) throws RemoteException {
+		String ownerIp = null;
+		try {
+			ownerIp = peerDAO.getOwnerIp(fileName);
+		} catch (SQLException e) {
+			LOGGER.error("DAO error", e);
+		}
+		return ownerIp;
+	}
+	
+	public String getFilePath(String fileName) throws RemoteException {
 		try {
 			return peerDAO.findFile(fileName);
 		} catch (SQLException e) {
@@ -239,7 +279,8 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 			if (msg.getUpstream_ip().equals(InetAddress.getLocalHost().getHostAddress())) {
 				// the original sender, and put the peerIP and peerPort and
 				// fileName in queue.
-				System_Context.downloadingQueue.put(peerIP+":"+peerPort+":"+messageId+":"+fileName);
+
+				System_Context.downloadingQueue.put(peerIP+":"+peerPort+":"+messageId+":"+fileName); //+":"+filePath+":"+fileVersion+":"+fileState+":"+ownerIp);
 			} else {
 				String upstream_ip = msg.getUpstream_ip();
 				String upstream_port = msg.getUpstream_port();
@@ -268,6 +309,90 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 
 	public void queryExpire(String messageId) throws RemoteException {
 
+	}
+	
+	private class ModifyProcess implements Runnable {
+
+		private Object obj;
+		private String message_id;
+		private String fileName;
+		private int TTL;
+
+
+		public ModifyProcess(Object obj, String message_id, String fileName, int TTL) {
+			super();
+			this.obj = obj;
+			this.message_id = message_id;
+			this.fileName = fileName;
+			this.TTL = TTL;
+		}
+
+		public void run() {
+			try {
+				LOGGER.debug("invoke RMI: " + "rmi://" + obj + "/peerTransfer");
+				IPeerTransfer peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + obj + "/peerTransfer");
+				peerTransfer.invalidate(message_id,TTL, fileName, String.valueOf(System_Context.SERVICE_PORT));
+			} catch (NotBoundException e) {
+				LOGGER.error("Remote call error", e);
+				return;
+			} catch (MalformedURLException e) {
+				LOGGER.error("Remote call error", e);
+				return;
+			} catch (RemoteException e) {
+				LOGGER.error("Remote call error", e);
+				return;
+			}
+
+		}
+
+	}
+
+	public void invalidate(String messageId,int TTL,String fileName, String service_port) throws RemoteException{
+		String clienthost;
+		try {
+			clienthost = RemoteServer.getClientHost();
+
+			InetAddress ia = java.net.InetAddress.getByName(clienthost);
+			String clentIp = ia.getHostAddress();
+
+			LOGGER.info("Received peer invalidate message from peer IP[" + clentIp + "]");
+
+			if (TTL==0) {
+				LOGGER.debug("TTL=" + TTL + " query expire.");
+				return;
+			}else {
+				TTL -= 1;
+				if (peerDAO.checkMessage(messageId)) {
+					LOGGER.debug("messageid:" + messageId + " already exist.");
+					return;
+				} else {
+					Date time_insert = new Date(System.currentTimeMillis());
+					Date time_expire = new Date(time_insert.getTime() + 10 * 1000);
+					peerDAO.addMessage(messageId, clentIp, service_port, time_insert, time_expire, fileName);
+					LOGGER.debug("Add message to database, message from peer:" + clentIp);
+				}
+				
+				// check database, if cached file exits then mark it dirty
+				if (peerDAO.checkFileAvailable(fileName)) {
+					LOGGER.debug("Got file in database,update file as invalid.");
+					peerDAO.markDirty(fileName);
+					
+				}
+
+				// forward to neighbors, broadcast the message
+				PropertyUtil propertyUtil = new PropertyUtil("network.properties");
+				Collection<Object> values = propertyUtil.getProperties();
+				for (Object obj : values) {
+					new Thread(new ModifyProcess(obj, messageId, fileName, TTL)).start();
+				}
+			}
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+
+
+			
 	}
 
 }

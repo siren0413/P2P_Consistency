@@ -44,7 +44,7 @@ public class PeerUI {
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
-			System.out.println("Enter -1 number to exit");
+//			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
 			switch (input) {
@@ -56,7 +56,7 @@ public class PeerUI {
 					if(!file.exists()) {
 						System.out.println(SystemUtil.getSimpleTime()+"File not found! Please check the file path.");
 					}
-					boolean sf = peer.shareFile(file);
+					boolean sf = peer.uploadFile(file);
 					if (sf)
 						System.out.println("File upload successfully!");
 					else
@@ -74,7 +74,7 @@ public class PeerUI {
 						System.out.println("File download successfully!");
 					else
 						System.out.println("File download failed.");
-
+					break;
 				case 3 :
 					System.out.println("You choice to modify file. Please give the absolute file path.(including file name)");
 					String filePath2 = scanner.next();
@@ -84,10 +84,11 @@ public class PeerUI {
 						System.out.println(SystemUtil.getSimpleTime()+"File not found! Please check the file path.");
 					}
 					peer.modifyFile(file2);
-				case -1:
+					break;
+				case 100:
 					System.out.println("You choice to exit. Bye......");
 					flag = false;
-
+					break;
 				default :
 					break;
 			}

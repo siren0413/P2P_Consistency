@@ -82,11 +82,13 @@ public class Peer {
 	 * @param file
 	 *            the file
 	 * @return true, if successful
+	 * @throws UnknownHostException 
 	 */
-	public boolean shareFile(File file) {
+	public boolean uploadFile(File file) {
 		try {
 			// add the file to self database
-			boolean result2 = peerDAO.insertFile(file.getAbsolutePath(), file.getName(), (int)file.length());
+			boolean result2 = peerDAO.insertFile(file.getAbsolutePath(), file.getName(), (int)file.length(), 0 ,
+							"valid",InetAddress.getLocalHost().getHostAddress()+":"+String.valueOf(System_Context.SERVICE_PORT));
 			if (result2)
 				LOGGER.info("insert file[" + file.getName() + "] to local database successfully!");
 			else
@@ -95,6 +97,8 @@ public class Peer {
 		} catch (SQLException e) {
 			LOGGER.error("Unable to register file [" + file.getName() + "] due to DAO error", e);
 			return false;
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
 		}
 
 		return true;
@@ -207,8 +211,13 @@ public class Peer {
 			}
 
 			int length = 0;
+			String filePath = null,fileVersion = null, fileState = null, ownerIp = null;
 			try {
 				length = peerTransfer.getFileLength(fileName);
+				filePath = peerTransfer.findFile(fileName);
+				fileVersion = peerTransfer.getFileVersion(fileName);
+				fileState = peerTransfer.getFileState(fileName);
+				ownerIp = peerTransfer.getOwnerIp(fileName);
 			} catch (RemoteException e1) {
 				e1.printStackTrace();
 				continue;
@@ -231,7 +240,7 @@ public class Peer {
 
 			byte[] buffer;
 			
-			System.out.println(SystemUtil.getSimpleTime()+"Start downloading...");
+			System.out.println(SystemUtil.getSimpleTime()+" Start downloading...");
 
 			while (left > 0) {
 				try {
@@ -242,7 +251,7 @@ public class Peer {
 					out.write(buffer);
 					left -= buffer.length;
 					start += buffer.length;
-					System.out.println(SystemUtil.getSimpleTime()+"downloading complete: "+ Math.round((start/length)*100));
+					System.out.println(SystemUtil.getSimpleTime()+"downloading complete: "+ Math.round(((double)start/length)*100) + "%");
 				} catch (Exception e) {
 					e.printStackTrace();
 					continue;
@@ -257,10 +266,11 @@ public class Peer {
 			result = true;
 
 			if (result) {
-				LOGGER.info("download file successfully!");
+				LOGGER.info("download file successfully! File: [" +fileName+"],version: [" + fileVersion + "],owner address: ["+ownerIp+"]");
 				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
 					peerDAO.removeMessage(messageId);
+					peerDAO.insertFile(filePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp);
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
@@ -272,28 +282,104 @@ public class Peer {
 
 	}
 	
+	/**
+	 * check the ownership of a file
+	 * 
+	 * @param filePath
+	 * @return true means peer owns the file, else peer cannot modify it. 
+	 */
+	private boolean checkOwnership(File filePath) {
+		String owner = null;
+		try {
+			owner = peerDAO.findOwner(filePath.getName());
+			if (owner.equals(InetAddress.getLocalHost().getHostAddress()+":"+String.valueOf(System_Context.SERVICE_PORT)))
+				return true;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return false;
+	}
+	
+	
+	private class ModifyProcess implements Runnable {
+
+		private Object obj;
+		private String message_id;
+		private String fileName;
+		private int TTL;
+
+
+		public ModifyProcess(Object obj, String message_id, String fileName, int TTL) {
+			super();
+			this.obj = obj;
+			this.message_id = message_id;
+			this.fileName = fileName;
+			this.TTL = TTL;
+		}
+
+		public void run() {
+			try {
+				LOGGER.debug("invoke RMI: " + "rmi://" + obj + "/peerTransfer");
+				IPeerTransfer peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + obj + "/peerTransfer");
+				peerTransfer.invalidate(message_id,TTL, fileName, String.valueOf(System_Context.SERVICE_PORT));
+			} catch (NotBoundException e) {
+				LOGGER.error("Remote call error", e);
+				return;
+			} catch (MalformedURLException e) {
+				LOGGER.error("Remote call error", e);
+				return;
+			} catch (RemoteException e) {
+				LOGGER.error("Remote call error",e);
+				return;
+			}
+
+		}
+
+	}
 	
 	public void modifyFile(File filePath) {
-//		try {
-//			LOGGER.info("Start modify file " + fileName + "...");
-//			boolean updateFileVersion = peerDAO.updateFileVersion(fileName);
-//			if (updateFileVersion == false) {
-//				LOGGER.info("Cannot modify file [" + fileName+"]. Please check the database.");
-//				return ;
-//			}
-//			LOGGER.info("File [" + fileName + "] modified successfully!");
-//			LOGGER.info("Broadcast file modified message");
-//			
-//			PropertyUtil propertyUtil = new PropertyUtil("network.properties");
-//			Collection<Object> values = propertyUtil.getProperties();
-//			for (final Object obj : values) {
-//			new Thread(new ModifyProcess(obj, fileName)).start();
-//		}
-//			
-//		} catch (Exception e) {
-//			LOGGER.error("ModifyFile[" + fileName +"] failed!");
-//			e.printStackTrace();
-//		}
+		if (!checkOwnership(filePath)) {
+			LOGGER.info("Cannot modify file, do not have the authorization");
+			return;
+		}
+		
+		Date time_insert = new Date(System.currentTimeMillis());
+		Date time_expire = new Date(time_insert.getTime() + 10 * 1000);
+		final String message_id = ID_Generator.generateID();
+		
+		try {
+			peerDAO.addMessage(message_id, InetAddress.getLocalHost().getHostAddress(), String.valueOf(System_Context.SERVICE_PORT), time_insert, time_expire, filePath.getName());
+
+			LOGGER.info("Add message to database. ip:" + InetAddress.getLocalHost().getHostAddress() + " port:" + String.valueOf(System_Context.SERVICE_PORT) + " file:" + filePath.getName());
+			LOGGER.info("Start modify file " + filePath.getName() + "...");
+			
+			boolean updateFileVersion = peerDAO.updateFileVersion(filePath);
+			if (updateFileVersion == false) {
+				LOGGER.debug("Cannot modify file [" + filePath.getName()+"]. Please check the database.");
+				return ;
+			}
+			LOGGER.info("File [" + filePath.getName() + "] modified successfully!");
+			LOGGER.info("Broadcast file modified message");
+			
+			PropertyUtil propertyUtil = new PropertyUtil("network.properties");
+			Collection<Object> values = propertyUtil.getProperties();
+			for (final Object obj : values) {
+				new Thread(new ModifyProcess(obj, message_id, filePath.getName(), 10)).start();
+			}
+		} catch (UnknownHostException e2) {
+			e2.printStackTrace();
+		} catch (SQLException e2) {
+			e2.printStackTrace();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 	}
 

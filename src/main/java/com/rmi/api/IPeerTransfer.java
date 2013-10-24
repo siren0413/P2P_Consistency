@@ -6,6 +6,8 @@ package com.rmi.api;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 
+import com.System_Context;
+
 
 /**
  * Remote method for files transfer between peers
@@ -55,5 +57,15 @@ public interface IPeerTransfer extends Remote {
 	public void hitQuery(String messageId, int TTL, String fileName, String peerIP, String peerPort) throws RemoteException;
 
 	public void queryExpire(String messageId) throws RemoteException;
+	
+	public void invalidate(String messageId,int TTL,String fileName, String service_port) throws RemoteException;
+
+	public String findFile(String fileName) throws RemoteException;
+
+	public String getFileVersion(String fileName) throws RemoteException;
+
+	public String getFileState(String fileName) throws RemoteException;
+
+	public String getOwnerIp(String fileName) throws RemoteException;
 
 }
