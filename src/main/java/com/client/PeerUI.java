@@ -69,6 +69,9 @@ public class PeerUI {
 					System.out.println("Please give save file path.(including file name)");
 					String savePath = scanner.next();
 					System.out.println("File save path is : " + savePath);
+					System.out.println("Please enter the band with:");
+					int band_width = scanner.nextInt();
+					System_Context.BAND_WIDTH = band_width;
 					boolean dl = peer.downloadFile(fileName, savePath);
 					if (dl)
 						System.out.println("File download successfully!");
