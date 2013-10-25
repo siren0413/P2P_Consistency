@@ -349,11 +349,13 @@ public class PeerDAO {
 	 * @return true means version updated
 	 * @throws SQLException
 	 */
-	public boolean updateFileVersion(File filePath) throws SQLException {
+	public boolean updateFileVersionAndTimeModified(File filePath) throws SQLException {
 
 		try {
 			conn = PeerHSQLDB.getConnection();
 			statement = conn.createStatement();
+			Date time_insert = new Date(System.currentTimeMillis());
+			Timestamp timestamp = new Timestamp(time_insert.getTime());
 			String sql = "select file_version from PeerFiles where file_name like '" + filePath.getName() + "'";
 			result = statement.executeQuery(sql);
 			String num = "";
@@ -363,7 +365,7 @@ public class PeerDAO {
 			LOGGER.info("File version is :" + String.valueOf(num));
 			Integer versionNumber = Integer.parseInt(num);
 			versionNumber++;
-			sql = "UPDATE PeerFiles SET file_version='" + versionNumber + "' where file_name like '" + filePath.getName() + "'";
+			sql = "UPDATE PeerFiles SET file_version='" + versionNumber + "' , last_modified='"+ timestamp +"' where file_name like '" + filePath.getName() + "'";
 			statement.executeUpdate(sql);
 			
 			// test version update

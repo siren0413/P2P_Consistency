@@ -356,12 +356,18 @@ public class Peer {
 			}
 			
 			int length = 0;
-			String fileVersion = null, fileState = null;
+			String fileState = null;
+			Date time_modified = null;
+			int fileVersion = -1, ttr = -1;;
+			
+			Map<Object,Object> map;
 			try {
-				length = peerTransfer.getFileLength(fileName);
-				fileVersion = peerTransfer.getFileVersion(fileName);
-				fileState = peerTransfer.getFileState(fileName);
-				
+				map = peerTransfer.getPeerInfo(fileName);
+				length = (Integer) map.get("file_size");
+				fileVersion = (Integer) map.get("file_version");
+				fileState = (String) map.get("file_state");				
+				ttr = (Integer) map.get("owner_ttr");
+				time_modified = (Date) map.get("last_modified");
 			} catch (RemoteException e1) {
 				e1.printStackTrace();
 			}
@@ -411,9 +417,8 @@ public class Peer {
 				LOGGER.info("download file successfully! File: [" +fileName+"],version: [" + fileVersion + "],owner address: ["+ownerIp+"]");
 				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
-					Date time_insert = new Date(System.currentTimeMillis());
 					peerDAO.deleteFile(fileName);
-					peerDAO.insertFile(savePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp,System_Context.TTR, time_insert);
+					peerDAO.insertFile(savePath, fileName, length,fileVersion,fileState, ownerIp,ttr,time_modified);
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
@@ -480,9 +485,9 @@ public class Peer {
 			LOGGER.info("Add message to database. ip:" + InetAddress.getLocalHost().getHostAddress() + " port:" + String.valueOf(System_Context.SERVICE_PORT) + " file:" + filePath.getName());
 			LOGGER.info("Start modify file " + filePath.getName() + "...");
 			
-			boolean updateFileVersion = peerDAO.updateFileVersion(filePath);
-			if (updateFileVersion == false) {
-				LOGGER.debug("Cannot modify file [" + filePath.getName()+"]. Please check the database.");
+			boolean updateFileVersionAndTime = peerDAO.updateFileVersionAndTimeModified(filePath);
+			if (updateFileVersionAndTime == false) {
+				LOGGER.error("Cannot modify file [" + filePath.getName()+"]. Please check the database.");
 				return ;
 			}
 			LOGGER.info("File [" + filePath.getName() + "] modified successfully!");
