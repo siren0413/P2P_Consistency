@@ -280,7 +280,7 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 				// the original sender, and put the peerIP and peerPort and
 				// fileName in queue.
 
-				System_Context.downloadingQueue.put(peerIP+":"+peerPort+":"+messageId+":"+fileName); //+":"+filePath+":"+fileVersion+":"+fileState+":"+ownerIp);
+				System_Context.DOWNLOADING_QUEUE.put(peerIP+":"+peerPort+":"+messageId+":"+fileName); //+":"+filePath+":"+fileVersion+":"+fileState+":"+ownerIp);
 			} else {
 				String upstream_ip = msg.getUpstream_ip();
 				String upstream_port = msg.getUpstream_port();

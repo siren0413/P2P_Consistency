@@ -181,7 +181,7 @@ public class Peer {
 			String element = null;
 			String[] destAddr = null;
 			try {
-				element = System_Context.downloadingQueue.take();
+				element = System_Context.DOWNLOADING_QUEUE.take();
 				destAddr = element.split(":");
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
@@ -195,12 +195,13 @@ public class Peer {
 			if (!file_name.equals(fileName)) {
 				LOGGER.debug("Destory previous downloading thread due to fileName not equal. expect[" + fileName + "], was[" + file_name + "]");
 				try {
-					System_Context.downloadingQueue.put(element);
+					System_Context.DOWNLOADING_QUEUE.put(element);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 				return false;
 			}
+			
 			LOGGER.debug("invoke remote object [" + "rmi://" + ip + ":" + port + "/peerTransfer]");
 			IPeerTransfer peerTransfer;
 			try {
@@ -270,11 +271,11 @@ public class Peer {
 				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
 					peerDAO.removeMessage(messageId);
-					peerDAO.insertFile(filePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp);
+					peerDAO.insertFile(savePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp);
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
-				System_Context.downloadingQueue.clear();
+				System_Context.DOWNLOADING_QUEUE.clear();
 				return true;
 			}
 
@@ -303,6 +304,113 @@ public class Peer {
 		}
 		
 		return false;
+	}
+	
+	/**
+	 * 
+	 * @param fileName
+	 */
+	public void refreshFile(String fileName) {
+				
+		try {
+			if(peerDAO.findFile(fileName)=="null") {
+				LOGGER.info("No file: [" + fileName + "] exits.");
+				return;
+			}
+			
+			if((peerDAO.getFileState(fileName)).equals("valid")) {
+				LOGGER.info("File is up to date. No need to refresh.");
+				return;
+			}
+			
+			String savePath = peerDAO.findFile(fileName);
+			System.out.println("File local address:" + savePath);
+			String ownerIp = peerDAO.findOwner(fileName);
+			String[] ownerAddress = ownerIp.split(":");
+			String ip = ownerAddress[0];
+			String port = ownerAddress[1];
+			
+			LOGGER.info("Start downloading file: [" + fileName + "] ............");
+			LOGGER.debug("invoke remote object [" + "rmi://" + ip + ":" + port + "/peerTransfer]");
+			
+			IPeerTransfer peerTransfer = null;
+			boolean result = false;
+			try {
+				peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + ip + ":" + port + "/peerTransfer");
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+			
+			int length = 0;
+			String fileVersion = null, fileState = null;
+			try {
+				length = peerTransfer.getFileLength(fileName);
+//				filePath = peerTransfer.findFile(fileName);
+				fileVersion = peerTransfer.getFileVersion(fileName);
+				fileState = peerTransfer.getFileState(fileName);
+				
+			} catch (RemoteException e1) {
+				e1.printStackTrace();
+			}
+			int start = 0;
+			int left = length;
+			LOGGER.info("file size:" + length + " bytes");
+
+			if("".equals(savePath)) {
+				savePath = fileName;
+			}
+			File file = new File(savePath);
+			OutputStream out = null;
+			try {
+				out = new FileOutputStream(file);
+			} catch (FileNotFoundException e1) {
+				e1.printStackTrace();
+			}
+
+			byte[] buffer;
+			
+			System.out.println(SystemUtil.getSimpleTime()+" Start downloading...");
+
+			while (left > 0) {
+				try {
+					Thread.sleep(1000);
+
+					buffer = peerTransfer.obtain(fileName, start, 1024 * System_Context.BAND_WIDTH);
+
+					out.write(buffer);
+					left -= buffer.length;
+					start += buffer.length;
+					System.out.println(SystemUtil.getSimpleTime()+"downloading complete: "+ Math.round(((double)start/length)*100) + "%");
+				} catch (Exception e) {
+					e.printStackTrace();
+					continue;
+				}
+			}
+
+			try {
+				out.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			result = true;
+
+			if (result) {
+				LOGGER.info("download file successfully! File: [" +fileName+"],version: [" + fileVersion + "],owner address: ["+ownerIp+"]");
+				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
+				try {
+					peerDAO.deleteFile(fileName);
+					peerDAO.insertFile(savePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp);
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+				
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 	
 	

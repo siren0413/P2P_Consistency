@@ -44,7 +44,8 @@ public class PeerUI {
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
-//			System.out.println("Enter 100 number to exit");
+			System.out.println("Enter 4 for refresh a file.");
+			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
 			switch (input) {
@@ -87,6 +88,12 @@ public class PeerUI {
 						System.out.println(SystemUtil.getSimpleTime()+"File not found! Please check the file path.");
 					}
 					peer.modifyFile(file2);
+					break;
+				case 4:
+					System.out.println("You choice to refresh a file");
+					System.out.println("Please enter the file name.");
+					String filename = scanner.next();
+					peer.refreshFile(filename);
 					break;
 				case 100:
 					System.out.println("You choice to exit. Bye......");
