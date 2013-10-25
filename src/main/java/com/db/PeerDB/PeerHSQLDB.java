@@ -21,6 +21,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 
 import org.apache.log4j.Logger;
 
@@ -52,6 +53,8 @@ public class PeerHSQLDB {
 					+ "file_version		INT		NOT NULL, "
 					+ "file_state		VARCHAR(200)		NOT NULL,   "
 					+ "owner_ip			VARCHAR(200)		NOT NULL,	"
+					+ "owner_ttr          INT       NOT NULL,"
+					+ "last_modified  timestamp			NOT NULL,"	
 					+ "constraint unique_file_and_file_path UNIQUE ( file_path,file_size) )";
 			
 			String messageTable = "Messages";

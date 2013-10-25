@@ -19,6 +19,8 @@
 
 package com.cache;
 
+import java.util.Date;
+
 public class PeerInfo {
 	
 	/** The bean class for peer information. */
@@ -34,6 +36,15 @@ public class PeerInfo {
 	/** The file size. */
 	private int fileSize;
 	
+	private int fileVersion;
+	
+	private String fileState;
+	
+	private String ownerIp;
+	
+	private int ownerTTR;
+	
+	private Date lastModifieDate;
 	
 	/**
 	 * getter for peer id.
@@ -110,6 +121,46 @@ public class PeerInfo {
 	 */
 	public int setFileSize(int fileSize) {
 		return this.fileSize = fileSize;
+	}
+
+	public int getFileVersion() {
+		return fileVersion;
+	}
+
+	public void setFileVersion(int fileVersion) {
+		this.fileVersion = fileVersion;
+	}
+
+	public String getFileState() {
+		return fileState;
+	}
+
+	public void setFileState(String fileState) {
+		this.fileState = fileState;
+	}
+
+	public String getOwnerIp() {
+		return ownerIp;
+	}
+
+	public void setOwnerIp(String ownerIp) {
+		this.ownerIp = ownerIp;
+	}
+
+	public int getOwnerTTR() {
+		return ownerTTR;
+	}
+
+	public void setOwnerTTR(int ownerTTR) {
+		this.ownerTTR = ownerTTR;
+	}
+
+	public Date getLastModifieDate() {
+		return lastModifieDate;
+	}
+
+	public void setLastModifieDate(Date lastModifieDate) {
+		this.lastModifieDate = lastModifieDate;
 	}
 
 }

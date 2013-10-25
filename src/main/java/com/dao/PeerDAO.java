@@ -25,7 +25,9 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
@@ -71,12 +73,13 @@ public class PeerDAO {
 	 * @throws SQLException
 	 *             the sQL exception
 	 */
-	public boolean insertFile(String filePath, String fileName, int fileSize, int fileVersion, String fileState, String ownerIP) throws SQLException {
+	public boolean insertFile(String filePath, String fileName, int fileSize, int fileVersion,
+									String fileState, String ownerIP, int TTR, Date modifiedTime) throws SQLException {
 
 		try {
 			conn = PeerHSQLDB.getConnection();
 			String id = ID_Generator.generateID();
-			String sql = "insert into PeerFiles values (?,?,?,?,?,?,?)";
+			String sql = "insert into PeerFiles values (?,?,?,?,?,?,?,?,?)";
 			stmt = conn.prepareStatement(sql);
 			stmt.setString(1, id);
 			stmt.setString(2, filePath);
@@ -85,6 +88,8 @@ public class PeerDAO {
 			stmt.setInt(5, fileVersion);
 			stmt.setString(6, fileState);
 			stmt.setString(7, ownerIP);
+			stmt.setInt(8, TTR);
+			stmt.setTimestamp(9, new Timestamp(modifiedTime.getTime()));
 			stmt.executeUpdate();
 
 			return true;
@@ -276,6 +281,65 @@ public class PeerDAO {
 		return null;
 	}
 	
+	public int findFileTTR(String fileName) {
+		int ttr = -1;
+		try {
+			conn = PeerHSQLDB.getConnection();
+			statement = conn.createStatement();
+			String sql = "select owner_ttr from PeerFiles where file_name like '" + fileName + "'";
+			result = statement.executeQuery(sql);
+			String ttrString = "-1";
+			while (result.next()) {
+				ttrString = result.getString(1);
+			}
+			ttr = Integer.parseInt(ttrString);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return ttr;
+	}
+	
+	public Date getLastModifedTime(String fileName) {
+		Date time_modifedDate = null;
+		try {
+			conn = PeerHSQLDB.getConnection();
+			statement = conn.createStatement();
+			String sql = "select last_modified from PeerFiles where file_name like '" + fileName + "'";
+			result = statement.executeQuery(sql);
+			while (result.next()) {
+				time_modifedDate = new Date(result.getDate(1).getTime());
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return time_modifedDate;
+	}
+	
 	
 	/**
 	 * Only could be called in Peer.modifyFile() function,
@@ -424,6 +488,12 @@ public class PeerDAO {
 				pInfo.setFilePath(result.getString(2));
 				pInfo.setFileName(result.getString(3));
 				pInfo.setFileSize(result.getInt(4));
+				pInfo.setFileVersion(result.getInt(5));
+				pInfo.setFileState(result.getString(6));
+				pInfo.setOwnerIp(result.getString(7));
+				pInfo.setOwnerTTR(result.getInt(8));
+				pInfo.setLastModifieDate(result.getDate(9));
+				
 				peerInfolist.add(pInfo);
 			}
 
@@ -443,6 +513,42 @@ public class PeerDAO {
 		return peerInfolist;
 	}
 	
+	
+	public Map<Object,Object> getPeerInfo(String fileName) throws SQLException{
+		Map<Object,Object> map = null;
+		try {
+			conn = PeerHSQLDB.getConnection();
+			statement = conn.createStatement();
+			String sql = "select * from PeerFiles where file_name like '" + fileName + "'";
+			result = statement.executeQuery(sql);
+			while (result.next()) {
+				map = new HashMap<Object,Object>();
+				map.put("id", result.getString("id"));
+				map.put("file_path", result.getString("file_path"));
+				map.put("file_name", result.getString("file_name"));
+				map.put("file_size", result.getInt("file_size"));
+				map.put("file_version", result.getInt("file_version"));
+				map.put("file_state", result.getString("file_state"));
+				map.put("owner_ip", result.getString("owner_ip"));
+				map.put("owner_ttr", result.getInt("owner_ttr"));
+				map.put("last_modified", result.getDate("last_modified"));
+			}
+
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return map;
+	}
 	
 	public void addMessage(String messageId,String upstream_ip,String upstream_port, Date insert_time, Date expire_time ,String fileName) throws SQLException {
 		try {
@@ -604,5 +710,8 @@ public class PeerDAO {
 			}
 		}
 	}
+
+
+	
 	
 }

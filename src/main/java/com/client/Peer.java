@@ -35,9 +35,12 @@ import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.log4j.Logger;
 
@@ -87,8 +90,9 @@ public class Peer {
 	public boolean uploadFile(File file) {
 		try {
 			// add the file to self database
-			boolean result2 = peerDAO.insertFile(file.getAbsolutePath(), file.getName(), (int)file.length(), 0 ,
-							"valid",InetAddress.getLocalHost().getHostAddress()+":"+String.valueOf(System_Context.SERVICE_PORT));
+			Date time_insert = new Date(System.currentTimeMillis());
+			boolean result2 = peerDAO.insertFile(file.getAbsolutePath(), file.getName(), (int)file.length(), 0 ,"valid",
+					InetAddress.getLocalHost().getHostAddress()+":"+String.valueOf(System_Context.SERVICE_PORT),System_Context.TTR, time_insert);
 			if (result2)
 				LOGGER.info("insert file[" + file.getName() + "] to local database successfully!");
 			else
@@ -212,13 +216,19 @@ public class Peer {
 			}
 
 			int length = 0;
-			String filePath = null,fileVersion = null, fileState = null, ownerIp = null;
+			String fileState = null, ownerIp = null;
+			Date time_modified = null;
+			int fileVersion = -1, ttr = -1;;
+			
+			Map<Object,Object> map;
 			try {
-				length = peerTransfer.getFileLength(fileName);
-				filePath = peerTransfer.findFile(fileName);
-				fileVersion = peerTransfer.getFileVersion(fileName);
-				fileState = peerTransfer.getFileState(fileName);
-				ownerIp = peerTransfer.getOwnerIp(fileName);
+				map = peerTransfer.getPeerInfo(fileName);
+				length = (Integer) map.get("file_size");
+				fileVersion = (Integer) map.get("file_version");
+				fileState = (String) map.get("file_state");
+				ownerIp = (String) map.get("owner_ip");
+				ttr = (Integer) map.get("owner_ttr");
+				time_modified = (Date) map.get("last_modified");
 			} catch (RemoteException e1) {
 				e1.printStackTrace();
 				continue;
@@ -267,11 +277,13 @@ public class Peer {
 			result = true;
 
 			if (result) {
-				LOGGER.info("download file successfully! File: [" +fileName+"],version: [" + fileVersion + "],owner address: ["+ownerIp+"]");
+				LOGGER.info("download file successfully! File: [" +fileName+"],version: [" + fileVersion + "],owner address: ["+ownerIp+"],"
+						+ " TTR : [" + ttr + "], last modified time is : [" + time_modified.toString() + "]");
 				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
 					peerDAO.removeMessage(messageId);
-					peerDAO.insertFile(savePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp);
+					time_insert = new Date(System.currentTimeMillis());
+					peerDAO.insertFile(savePath, fileName, length,fileVersion, fileState, ownerIp,ttr,time_modified);
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
@@ -293,6 +305,8 @@ public class Peer {
 		String owner = null;
 		try {
 			owner = peerDAO.findOwner(filePath.getName());
+			if(owner == null)
+				return false;
 			if (owner.equals(InetAddress.getLocalHost().getHostAddress()+":"+String.valueOf(System_Context.SERVICE_PORT)))
 				return true;
 		} catch (SQLException e) {
@@ -313,7 +327,7 @@ public class Peer {
 	public void refreshFile(String fileName) {
 				
 		try {
-			if(peerDAO.findFile(fileName)=="null") {
+			if(peerDAO.findFile(fileName)== null) {
 				LOGGER.info("No file: [" + fileName + "] exits.");
 				return;
 			}
@@ -345,7 +359,6 @@ public class Peer {
 			String fileVersion = null, fileState = null;
 			try {
 				length = peerTransfer.getFileLength(fileName);
-//				filePath = peerTransfer.findFile(fileName);
 				fileVersion = peerTransfer.getFileVersion(fileName);
 				fileState = peerTransfer.getFileState(fileName);
 				
@@ -398,8 +411,9 @@ public class Peer {
 				LOGGER.info("download file successfully! File: [" +fileName+"],version: [" + fileVersion + "],owner address: ["+ownerIp+"]");
 				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
+					Date time_insert = new Date(System.currentTimeMillis());
 					peerDAO.deleteFile(fileName);
-					peerDAO.insertFile(savePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp);
+					peerDAO.insertFile(savePath, fileName, length,Integer.parseInt(fileVersion), fileState, ownerIp,System_Context.TTR, time_insert);
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}

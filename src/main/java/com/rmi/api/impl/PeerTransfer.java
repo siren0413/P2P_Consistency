@@ -36,13 +36,16 @@ import java.rmi.RemoteException;
 import java.rmi.server.RemoteServer;
 import java.rmi.server.ServerNotActiveException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Date;
 
 import org.apache.log4j.Logger;
 
 import com.System_Context;
+import com.cache.PeerInfo;
 import com.cache.PeerMessage;
 import com.client.PeerUI;
 import com.dao.PeerDAO;
@@ -160,6 +163,28 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 			LOGGER.error("DAO error", e);
 		}
 		return false;
+	}
+	
+	public int getTTR(String fileName) throws RemoteException{
+		int ttr = -1;
+		ttr = peerDAO.findFileTTR(fileName);
+		return ttr;
+	}
+	
+	public Date getTimeModified(String fileName) throws RemoteException{
+		Date time_modifed = null;
+		time_modifed = peerDAO.getLastModifedTime(fileName);
+		return time_modifed;
+	}
+	
+	public Map<Object,Object> getPeerInfo(String fileName) throws RemoteException{
+		Map<Object,Object> map = null;
+		try {
+			map = peerDAO.getPeerInfo(fileName);
+		} catch (SQLException e) {
+			LOGGER.error("DAO error", e);
+		}
+		return map;
 	}
 
 	public void query(String messageId, int TTL, String fileName, String service_port) throws RemoteException {
