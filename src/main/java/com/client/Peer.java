@@ -509,6 +509,19 @@ public class Peer {
 		}
 		
 	}
+	
+	public void pull() {
+		try {
+			List<PeerInfo> expiredFile = peerDAO.queryExpiredFile();
+			if (expiredFile.isEmpty()) {
+				LOGGER.info("No file's TTR expired.");
+				return;
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 
 	/**
 	 * Update local database.
