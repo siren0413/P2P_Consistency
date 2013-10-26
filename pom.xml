@@ -41,7 +41,7 @@
 			<version>4.11</version>
 		</dependency>
 		<dependency>
-  <groupId>com.siren.log4j</groupId>
+  <groupId>com.siren.logging</groupId>
   <artifactId>LoggingHistoryFileAppender</artifactId>
   <version>0.0.1</version>
 </dependency>
