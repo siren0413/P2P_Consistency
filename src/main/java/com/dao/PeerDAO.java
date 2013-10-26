@@ -461,36 +461,25 @@ public class PeerDAO {
 	}
 	
 	
-	public List<PeerInfo> queryVersionChangedFile(List<PeerInfo> fileList) throws SQLException{
-		List<PeerInfo> peerInfolist = new ArrayList<PeerInfo>();
+	public Object queryFile(String fileName) throws SQLException{
+		PeerInfo peerInfo = null;				
 		try {
 			conn = PeerHSQLDB.getConnection();
 			statement = conn.createStatement();
-			Iterator<PeerInfo> iterator = fileList.iterator();
-			int fileVersion = -1;
-			String fileName,filePath,sql;
-			PeerInfo peerInfo = null;
-			while(iterator.hasNext()) {
-				peerInfo = iterator.next();
-				fileName = peerInfo.getFileName();
-				fileVersion = peerInfo.getFileVersion();
-				filePath = peerInfo.getFilePath();
-				sql = "select * from PeerFiles where file_name like '" + fileName+ "', file_path like '"+filePath+"' , "+fileVersion+" < file_version";
-				result = statement.executeQuery(sql);
-				while (result.next()) {
-					PeerInfo pInfo = new PeerInfo();
-					pInfo.setId(result.getString(1));
-					pInfo.setFilePath(result.getString(2));
-					pInfo.setFileName(result.getString(3));
-					pInfo.setFileSize(result.getInt(4));
-					pInfo.setFileVersion(result.getInt(5));
-					pInfo.setFileState(result.getString(6));
-					pInfo.setOwnerIp(result.getString(7));
-					pInfo.setOwnerTTR(result.getInt(8));
-					pInfo.setLastModifieDate(result.getDate(9));
-					
-					peerInfolist.add(pInfo);
-				}
+			String sql = "select * from PeerFiles where file_name like '" + fileName+ "'";
+			result = statement.executeQuery(sql);
+			while (result.next()) {
+				PeerInfo pInfo = new PeerInfo();
+				pInfo.setId(result.getString(1));
+				pInfo.setFilePath(result.getString(2));
+				pInfo.setFileName(result.getString(3));
+				pInfo.setFileSize(result.getInt(4));
+				pInfo.setFileVersion(result.getInt(5));
+				pInfo.setFileState(result.getString(6));
+				pInfo.setOwnerIp(result.getString(7));
+				pInfo.setOwnerTTR(result.getInt(8));
+				pInfo.setLastModifieDate(result.getDate(9));
+						
 			}
 		} finally {
 			try {
@@ -505,7 +494,7 @@ public class PeerDAO {
 				}
 			}
 		}
-		return peerInfolist;
+		return peerInfo;
 		
 	}
 	
@@ -804,6 +793,35 @@ public class PeerDAO {
 				}
 			}
 		}
+	}
+
+
+	public void updateFileTTR(String fileName, int ownerTTR) {
+		try {
+			conn = PeerHSQLDB.getConnection();
+			statement = conn.createStatement();
+		
+			String sql;
+			sql = "UPDATE PeerFiles SET owner_ttr ='" + ownerTTR + "'  where file_name like '" + fileName + "'";
+			statement.executeQuery(sql);
+			LOGGER.info("File TTR updated to : [" + ownerTTR + "].");
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				stmt.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
 	}
 
 

@@ -39,6 +39,7 @@ import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -517,7 +518,55 @@ public class Peer {
 				LOGGER.info("No file's TTR expired.");
 				return;
 			}
+						
+			String fileName,ownerIp,ip,port;
+			List<PeerInfo> returnedFileInforList = null;
+			Iterator<PeerInfo> expiredFilesIter = expiredFile.iterator();
+			while(expiredFilesIter.hasNext()) {
+				PeerInfo pInfo = expiredFilesIter.next();
+				fileName = pInfo.getFileName();
+				ownerIp = pInfo.getOwnerIp();
+				String[] ipAndport = ownerIp.split(":");
+				ip = ipAndport[0];
+				port = ipAndport[1];
+				LOGGER.debug("invoke remote object [" + "rmi://" + ip + ":" + port + "/peerTransfer]");
+				IPeerTransfer peerTransfer = null;
+				try {
+					peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + ip + ":" + port + "/peerTransfer");
+				} catch (Exception e1) {
+					e1.printStackTrace();
+				}
+				pInfo = (PeerInfo) peerTransfer.queryFile(fileName);
+				returnedFileInforList.add(pInfo);	
+			}
+			
+			if(expiredFile.size() != returnedFileInforList.size()) {
+				LOGGER.info("The returned file infor is not the same as requested.");
+			}
+			
+			Iterator<PeerInfo> returnedFIterator = returnedFileInforList.iterator();
+			expiredFilesIter = expiredFile.iterator();
+			while(expiredFilesIter.hasNext()) {
+				PeerInfo expFileInfo = expiredFilesIter.next();
+				String expFileName = expFileInfo.getFileName();
+				int expFileVersion = expFileInfo.getFileVersion();
+				while(returnedFIterator.hasNext()) {
+					PeerInfo retFileInfo = expiredFilesIter.next();
+					String retFileName = retFileInfo.getFileName();
+					int retFileVersion = retFileInfo.getFileVersion();
+					if(expFileName.equals(retFileName)) {
+						if (expFileVersion != retFileVersion)
+							refreshFile(expFileName);
+						else 
+						    peerDAO.updateFileTTR(expFileName,retFileInfo.getOwnerTTR());
+					}
+					returnedFIterator = returnedFileInforList.iterator();
+				}
+			}			
 		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (RemoteException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

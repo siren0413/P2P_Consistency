@@ -45,6 +45,7 @@ public class PeerUI {
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
 			System.out.println("Enter 4 for refresh a file.");
+			System.out.println("Enter 5 to pull expired file(s).");
 			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
@@ -94,6 +95,10 @@ public class PeerUI {
 					System.out.println("Please enter the file name.");
 					String filename = scanner.next();
 					peer.refreshFile(filename);
+					break;
+				case 5:
+					System.out.println("You choice to pull expired file(s).");
+					peer.pull();
 					break;
 				case 100:
 					System.out.println("You choice to exit. Bye......");
