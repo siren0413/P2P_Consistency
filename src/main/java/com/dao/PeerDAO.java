@@ -26,6 +26,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -417,6 +418,98 @@ public class PeerDAO {
 		}
 		
 	}
+	
+	public List<PeerInfo> queryExpiredFile() throws SQLException{
+		List<PeerInfo> peerInfolist = new ArrayList<PeerInfo>();
+		try {
+			conn = PeerHSQLDB.getConnection();
+			statement = conn.createStatement();
+			Date time_insert = new Date(System.currentTimeMillis());
+			Timestamp currentTime = new Timestamp(time_insert.getTime());
+			String sql = "select * from PeerFiles where " + currentTime + " > (last_modified + owner_ttr*1000)";
+			result = statement.executeQuery(sql);
+			while (result.next()) {
+				PeerInfo pInfo = new PeerInfo();
+				pInfo.setId(result.getString(1));
+				pInfo.setFilePath(result.getString(2));
+				pInfo.setFileName(result.getString(3));
+				pInfo.setFileSize(result.getInt(4));
+				pInfo.setFileVersion(result.getInt(5));
+				pInfo.setFileState(result.getString(6));
+				pInfo.setOwnerIp(result.getString(7));
+				pInfo.setOwnerTTR(result.getInt(8));
+				pInfo.setLastModifieDate(result.getDate(9));
+				
+				peerInfolist.add(pInfo);
+			}
+
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return peerInfolist;
+		
+	}
+	
+	
+	public List<PeerInfo> queryVersionChangedFile(List<PeerInfo> fileList) throws SQLException{
+		List<PeerInfo> peerInfolist = new ArrayList<PeerInfo>();
+		try {
+			conn = PeerHSQLDB.getConnection();
+			statement = conn.createStatement();
+			Iterator<PeerInfo> iterator = fileList.iterator();
+			int fileVersion = -1;
+			String fileName,filePath,sql;
+			PeerInfo peerInfo = null;
+			while(iterator.hasNext()) {
+				peerInfo = iterator.next();
+				fileName = peerInfo.getFileName();
+				fileVersion = peerInfo.getFileVersion();
+				filePath = peerInfo.getFilePath();
+				sql = "select * from PeerFiles where file_name like '" + fileName+ "', file_path like '"+filePath+"' , "+fileVersion+" < file_version";
+				result = statement.executeQuery(sql);
+				while (result.next()) {
+					PeerInfo pInfo = new PeerInfo();
+					pInfo.setId(result.getString(1));
+					pInfo.setFilePath(result.getString(2));
+					pInfo.setFileName(result.getString(3));
+					pInfo.setFileSize(result.getInt(4));
+					pInfo.setFileVersion(result.getInt(5));
+					pInfo.setFileState(result.getString(6));
+					pInfo.setOwnerIp(result.getString(7));
+					pInfo.setOwnerTTR(result.getInt(8));
+					pInfo.setLastModifieDate(result.getDate(9));
+					
+					peerInfolist.add(pInfo);
+				}
+			}
+		} finally {
+			try {
+				statement.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return peerInfolist;
+		
+	}
+	
+	
 	
 	/**
 	 *  check whether a file is in the database and its state is valid

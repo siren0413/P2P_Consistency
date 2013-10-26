@@ -278,7 +278,7 @@ public class Peer {
 
 			if (result) {
 				LOGGER.info("download file successfully! File: [" +fileName+"],version: [" + fileVersion + "],owner address: ["+ownerIp+"],"
-						+ " TTR : [" + ttr + "], last modified time is : [" + time_modified.toString() + "]");
+						+ " TTR : [" + ttr + "], last modified time is : [" + new Timestamp(time_modified.getTime()) + "]");
 				System.out.println(SystemUtil.getSimpleTime() + "Download complete!\n");
 				try {
 					peerDAO.removeMessage(messageId);
