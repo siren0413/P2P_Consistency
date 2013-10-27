@@ -36,9 +36,11 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -491,12 +493,15 @@ public class Peer {
 				return ;
 			}
 			LOGGER.info("File [" + filePath.getName() + "] modified successfully!");
-			LOGGER.info("Broadcast file modified message");
 			
-			PropertyUtil propertyUtil = new PropertyUtil("network.properties");
-			Collection<Object> values = propertyUtil.getProperties();
-			for (final Object obj : values) {
-				new Thread(new ModifyProcess(obj, message_id, filePath.getName(), 10)).start();
+			if (System_Context.PUSH_APPROACH) {
+				LOGGER.info("Broadcast file modified message");
+				
+				PropertyUtil propertyUtil = new PropertyUtil("network.properties");
+				Collection<Object> values = propertyUtil.getProperties();
+				for (final Object obj : values) {
+					new Thread(new ModifyProcess(obj, message_id, filePath.getName(), 10)).start();
+				}
 			}
 		} catch (UnknownHostException e2) {
 			e2.printStackTrace();
@@ -508,6 +513,98 @@ public class Peer {
 			e.printStackTrace();
 		}
 		
+	}
+	
+	public void pull() {
+		LOGGER.info("Start to pull expired files......");
+		
+		try {
+			String myip = InetAddress.getLocalHost().getHostAddress();
+			List<PeerInfo> expiredFile = peerDAO.queryExpiredFile(myip);
+			if (expiredFile.isEmpty()) {
+				LOGGER.info("No file's TTR expired.");
+				return;
+			}
+						
+			String fileName,ownerIp,ip,port;
+			List<PeerInfo> returnedFileInforList = new ArrayList<PeerInfo>();
+			Iterator<PeerInfo> expiredFilesIter = expiredFile.iterator();
+			while(expiredFilesIter.hasNext()) {
+				PeerInfo pInfo = expiredFilesIter.next();
+				fileName = pInfo.getFileName();
+				ownerIp = pInfo.getOwnerIp();
+				String[] ipAndport = ownerIp.split(":");
+				ip = ipAndport[0];
+				port = ipAndport[1];
+				LOGGER.debug("invoke remote object [" + "rmi://" + ip + ":" + port + "/peerTransfer]");
+				IPeerTransfer peerTransfer = null;
+				try {
+					peerTransfer = (IPeerTransfer) Naming.lookup("rmi://" + ip + ":" + port + "/peerTransfer");
+				} catch (Exception e1) {
+					e1.printStackTrace();
+				}
+				Map<Object, Object> peerInforMap = peerTransfer.getPeerInfo(fileName);
+				
+				if (peerInforMap == null) {
+					LOGGER.error("Cannot get file from address:[" + ip +" : "+ port +"] for file : ["+ fileName +"]");
+				}
+				
+				PeerInfo remotePeerInfo = new PeerInfo();
+				remotePeerInfo.setId((String) peerInforMap.get("id"));
+				remotePeerInfo.setFilePath((String) peerInforMap.get("file_path"));
+				remotePeerInfo.setFileName((String) peerInforMap.get("file_name"));
+				remotePeerInfo.setFileSize((Integer) peerInforMap.get("file_size"));
+				remotePeerInfo.setFileVersion((Integer) peerInforMap.get("file_version"));
+				remotePeerInfo.setFileState((String) peerInforMap.get("file_state"));
+				remotePeerInfo.setOwnerIp((String) peerInforMap.get("owner_ip"));
+				remotePeerInfo.setOwnerTTR((Integer) peerInforMap.get("owner_ttr"));
+				remotePeerInfo.setLastModifieDate((Date) peerInforMap.get("last_modified"));								
+				if (pInfo != null)
+					returnedFileInforList.add(remotePeerInfo);	
+			}
+			
+			if(expiredFile.size() != returnedFileInforList.size()) {
+				LOGGER.info("The returned file infor is not the same as requested.");
+			}
+			
+			LOGGER.debug("The size of expired files is : " + expiredFile.size()+ ", and the size of returned file is : " + returnedFileInforList.size());
+			
+			Iterator<PeerInfo> returnedFIterator = returnedFileInforList.iterator();
+			Iterator<PeerInfo> expiredFilesIterator = expiredFile.iterator();
+			while(expiredFilesIterator.hasNext()) {
+				PeerInfo expFileInfo = expiredFilesIterator.next();
+				String expFileName = expFileInfo.getFileName();
+				int expFileVersion = expFileInfo.getFileVersion();
+				System.out.println("The expired file is : [" + expFileName+"] and the file version is :["+expFileVersion+"]");
+				while(returnedFIterator.hasNext()) {
+					PeerInfo retFileInfo = returnedFIterator.next();
+					String retFileName = retFileInfo.getFileName();
+					int retFileVersion = retFileInfo.getFileVersion();
+					if(expFileName.equals(retFileName)) {
+						System.out.println("The returned file is : [" + expFileName+"] and the file version is :["+retFileVersion+"]");
+						if (expFileVersion < retFileVersion) {
+							refreshFile(expFileName);
+							break;
+						}else if (expFileVersion == retFileVersion){
+							 peerDAO.updateFileTTR(expFileName,retFileInfo.getOwnerTTR());
+							 break;
+						}   
+					}
+				}
+				returnedFIterator = returnedFileInforList.iterator();
+			}
+			
+			LOGGER.debug("Poll expired file(s) finished.");
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -580,5 +677,16 @@ public class Peer {
 	public void setServer_port(String server_port) {
 		this.serverPort = server_port;
 	}
-
+	
+	public String testQueryFileVersion(String fileName)  {
+		String v = null;
+		try {
+			v= peerDAO.getFileVersion(fileName);
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return v;
+	}
+	
 }

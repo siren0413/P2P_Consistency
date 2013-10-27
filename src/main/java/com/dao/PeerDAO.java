@@ -419,15 +419,16 @@ public class PeerDAO {
 		
 	}
 	
-	public List<PeerInfo> queryExpiredFile() throws SQLException{
+	public List<PeerInfo> queryExpiredFile(String myip) throws SQLException{
 		List<PeerInfo> peerInfolist = new ArrayList<PeerInfo>();
 		try {
 			conn = PeerHSQLDB.getConnection();
 			statement = conn.createStatement();
-			Date time_insert = new Date(System.currentTimeMillis());
-			Timestamp currentTime = new Timestamp(time_insert.getTime());
-			String sql = "select * from PeerFiles where " + currentTime + " > (last_modified + owner_ttr*1000)";
+			
+			String sql = "select * from PeerFiles where owner_ip not like '"+ myip +"'";
 			result = statement.executeQuery(sql);
+			
+			Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
 			while (result.next()) {
 				PeerInfo pInfo = new PeerInfo();
 				pInfo.setId(result.getString(1));
@@ -440,7 +441,10 @@ public class PeerDAO {
 				pInfo.setOwnerTTR(result.getInt(8));
 				pInfo.setLastModifieDate(result.getDate(9));
 				
-				peerInfolist.add(pInfo);
+				if (currentTimestamp.getTime() > (result.getTimestamp(9).getTime() + result.getInt(8)*1000) )
+					LOGGER.debug("File :[" +pInfo.getFileName()+"] TTR is expired. And the file version is : [" + pInfo.getFileVersion()+
+									"], file state is :[" +pInfo.getFileState()+"]");
+					peerInfolist.add(pInfo);
 			}
 
 		} finally {
@@ -461,36 +465,26 @@ public class PeerDAO {
 	}
 	
 	
-	public List<PeerInfo> queryVersionChangedFile(List<PeerInfo> fileList) throws SQLException{
-		List<PeerInfo> peerInfolist = new ArrayList<PeerInfo>();
+	public Object queryFile(String fileName) throws SQLException{
+		PeerInfo peerInfo = null;				
 		try {
 			conn = PeerHSQLDB.getConnection();
 			statement = conn.createStatement();
-			Iterator<PeerInfo> iterator = fileList.iterator();
-			int fileVersion = -1;
-			String fileName,filePath,sql;
-			PeerInfo peerInfo = null;
-			while(iterator.hasNext()) {
-				peerInfo = iterator.next();
-				fileName = peerInfo.getFileName();
-				fileVersion = peerInfo.getFileVersion();
-				filePath = peerInfo.getFilePath();
-				sql = "select * from PeerFiles where file_name like '" + fileName+ "', file_path like '"+filePath+"' , "+fileVersion+" < file_version";
-				result = statement.executeQuery(sql);
-				while (result.next()) {
-					PeerInfo pInfo = new PeerInfo();
-					pInfo.setId(result.getString(1));
-					pInfo.setFilePath(result.getString(2));
-					pInfo.setFileName(result.getString(3));
-					pInfo.setFileSize(result.getInt(4));
-					pInfo.setFileVersion(result.getInt(5));
-					pInfo.setFileState(result.getString(6));
-					pInfo.setOwnerIp(result.getString(7));
-					pInfo.setOwnerTTR(result.getInt(8));
-					pInfo.setLastModifieDate(result.getDate(9));
-					
-					peerInfolist.add(pInfo);
-				}
+			String sql = "select * from PeerFiles where file_name like '" + fileName+ "'";
+			result = statement.executeQuery(sql);
+			LOGGER.debug("Query --> select * from PeerFiles where file_name like '" + fileName+ "'");
+			while (result.next()) {
+			    peerInfo = new PeerInfo();
+				peerInfo.setId(result.getString(1));
+				peerInfo.setFilePath(result.getString(2));
+				peerInfo.setFileName(result.getString(3));
+				peerInfo.setFileSize(result.getInt(4));
+				peerInfo.setFileVersion(result.getInt(5));
+				peerInfo.setFileState(result.getString(6));
+				peerInfo.setOwnerIp(result.getString(7));
+				peerInfo.setOwnerTTR(result.getInt(8));
+				peerInfo.setLastModifieDate(result.getDate(9));
+				
 			}
 		} finally {
 			try {
@@ -505,7 +499,8 @@ public class PeerDAO {
 				}
 			}
 		}
-		return peerInfolist;
+		LOGGER.debug("Query result --> " + peerInfo);
+		return peerInfo;
 		
 	}
 	
@@ -804,6 +799,35 @@ public class PeerDAO {
 				}
 			}
 		}
+	}
+
+
+	public void updateFileTTR(String fileName, int ownerTTR) {
+		try {
+			conn = PeerHSQLDB.getConnection();
+			statement = conn.createStatement();
+		
+			String sql;
+			sql = "UPDATE PeerFiles SET owner_ttr ='" + ownerTTR + "'  where file_name like '" + fileName + "'";
+			statement.executeQuery(sql);
+			
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				stmt.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					conn.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		LOGGER.debug("Update file : [" + fileName +"] TTR : [" + ownerTTR +"] successfully!");
 	}
 
 

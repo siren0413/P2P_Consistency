@@ -38,6 +38,7 @@ import java.rmi.server.ServerNotActiveException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.sql.SQLException;
 import java.util.Collection;
@@ -185,6 +186,16 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 			LOGGER.error("DAO error", e);
 		}
 		return map;
+	}
+	
+	public Object queryFile(String fileName) throws RemoteException{
+		 PeerInfo pInfo = null;
+		try {
+			pInfo = (PeerInfo) peerDAO.getPeerInfo(fileName);
+		} catch (SQLException e) {
+			LOGGER.error("DAO error",e);
+		}
+		return pInfo;
 	}
 
 	public void query(String messageId, int TTL, String fileName, String service_port) throws RemoteException {
@@ -397,7 +408,7 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 					LOGGER.debug("Add message to database, message from peer:" + clentIp);
 				}
 				
-				// check database, if cached file exits then mark it dirty
+				// check database, if cached file exits then mark it dirty, the state changed to "invalid"
 				if (peerDAO.checkFileAvailable(fileName)) {
 					LOGGER.debug("Got file in database,update file as invalid.");
 					peerDAO.markDirty(fileName);

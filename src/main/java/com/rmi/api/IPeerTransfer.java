@@ -6,6 +6,7 @@ package com.rmi.api;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 import com.System_Context;
@@ -76,5 +77,7 @@ public interface IPeerTransfer extends Remote {
 	public Date getTimeModified(String fileName) throws RemoteException;
 	
 	public Map<Object,Object> getPeerInfo(String fileName) throws RemoteException;
+	
+	public Object queryFile(String fileName) throws RemoteException;
 
 }

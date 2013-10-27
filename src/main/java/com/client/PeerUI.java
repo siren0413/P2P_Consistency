@@ -33,18 +33,44 @@ public class PeerUI {
 		initThreadService();
 	}
 
-	public void operations() {
+	public void operations()  {
 		Scanner scanner = new Scanner(System.in);
 
 		int input;
 		boolean flag = true;
-
+		boolean method = true;
+		
+		while (method) {
+			System.out.println("Do you want to use Push Approach or Pull Approach ?");
+			System.out.println("Enter 'push' or 'pull'");
+			String approach =scanner.next();
+			switch (approach) {
+				case "push":
+					System_Context.PUSH_APPROACH = true;
+					method = false;
+					break;
+				case "pull":
+					System_Context.PULL_APPROACH = true;
+					System.out.println("Please enter the time interval to pull as an integer. (eg. 10 for 10 second)");
+					int timetopull = scanner.nextInt();
+					System_Context.TIME_TO_PULL = timetopull;
+					method = false;
+					break;
+				default :
+					System.out.println("No such choice :" + approach+",please choice again.");
+					break;
+			}
+		}
+		
+		if(System_Context.PULL_APPROACH) {
+			initPullApproach();
+		}
+		
 		while (flag) {
 			System.out.println("Operation menu for peer:");
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
-			System.out.println("Enter 4 for refresh a file.");
 			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
@@ -64,13 +90,13 @@ public class PeerUI {
 						System.out.println("File upload failed.");
 					break;
 				case 2 :
-					System.out.println("You choice to download file. Please give file name");
+					System.out.println("You choice to download file. Please give file name.(eg. w1.txt)");
 					String fileName = scanner.next();
 					System.out.println("File name is : " + fileName);
-					System.out.println("Please give save file path.(including file name)");
+					System.out.println("Please give save file path.(including file name, eg: /home/user/Desktop/w1.txt)");
 					String savePath = scanner.next();
 					System.out.println("File save path is : " + savePath);
-					System.out.println("Please enter the band with:");
+					System.out.println("Please enter the band width:");
 					int band_width = scanner.nextInt();
 					System_Context.BAND_WIDTH = band_width;
 					boolean dl = peer.downloadFile(fileName, savePath);
@@ -89,12 +115,6 @@ public class PeerUI {
 					}
 					peer.modifyFile(file2);
 					break;
-				case 4:
-					System.out.println("You choice to refresh a file");
-					System.out.println("Please enter the file name.");
-					String filename = scanner.next();
-					peer.refreshFile(filename);
-					break;
 				case 100:
 					System.out.println("You choice to exit. Bye......");
 					flag = false;
@@ -103,7 +123,9 @@ public class PeerUI {
 					break;
 			}
 		}
-
+		
+		System_Context.PULL_APPROACH = false;
+		System_Context.PUSH_APPROACH = false;
 		System.out.println("Operation finished! Thank you!");
 		scanner.close();
 	}
@@ -166,5 +188,19 @@ public class PeerUI {
 		timer.schedule(task, 0, 100000);
 
 	}
+	
+	private void initPullApproach() {
+		TimerTask task = new TimerTask() {
+
+			@Override
+			public void run() {
+				peer.pull();
+			}
+		};
+		Timer timer = new Timer();
+		timer.schedule(task, 0, System_Context.TIME_TO_PULL*1000);
+		
+	}
+	
 
 }
