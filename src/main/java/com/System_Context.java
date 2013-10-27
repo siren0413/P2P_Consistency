@@ -11,6 +11,6 @@ public class System_Context {
 	public static int TTR = 5;
 	public static boolean PUSH_APPROACH = false;
 	public static boolean PULL_APPROACH = false;
-	
+	public static int TIME_TO_PULL = 5;
 	
 }

@@ -682,5 +682,23 @@ public class Peer {
 		}
 		return v;
 	}
+	
+	private class PullService implements Runnable{
+
+		public void run() {
+			pull();			
+		}
+	}
+	
+	public void usingPullApproach(boolean flag) {
+		try {
+			(new Thread(new PullService())).start();
+			Thread.sleep(System_Context.TIME_TO_PULL*1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
 
 }

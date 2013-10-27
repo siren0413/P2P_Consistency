@@ -38,15 +38,36 @@ public class PeerUI {
 
 		int input;
 		boolean flag = true;
-
+		boolean method = true;
+		
+		while (method) {
+			System.out.println("Do you want to use Push Approach or Pull Approach ?");
+			System.out.println("Enter 'push' or 'pull'");
+			String approach =scanner.next();
+			switch (approach) {
+				case "push":
+					System_Context.PUSH_APPROACH = true;
+					method = false;
+					break;
+				case "pull":
+					System_Context.PULL_APPROACH = true;
+					method = false;
+					break;
+				default :
+					System.out.println("No such choice :" + approach+",please choice again.");
+					break;
+			}
+		}
+		
+		
 		while (flag) {
 			System.out.println("Operation menu for peer:");
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
 			System.out.println("Enter 4 for refresh a file.");
-			System.out.println("Enter 5 to pull expired file(s).");
-			System.out.println("Enter 6 to query a file's version.");
+//			System.out.println("Enter 5 to pull expired file(s).");
+//			System.out.println("Enter 6 to query a file's version.");
 			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
@@ -114,7 +135,9 @@ public class PeerUI {
 					break;
 			}
 		}
-
+		
+		System_Context.PULL_APPROACH = false;
+		System_Context.PUSH_APPROACH = false;
 		System.out.println("Operation finished! Thank you!");
 		scanner.close();
 	}
