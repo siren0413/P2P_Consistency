@@ -68,10 +68,10 @@ public class PeerUI {
 		
 		while (flag) {
 			System.out.println("Operation menu for peer:");
-			System.out.println("Enter 1 for upload file.");
-			System.out.println("Enter 2 for download file");
-			System.out.println("Enter 3 for modify file");
-			System.out.println("Enter 100 number to exit");
+			System.out.println("Enter 1 to upload file.");
+			System.out.println("Enter 2 to download file");
+			System.out.println("Enter 3 to modify file");
+			System.out.println("Enter 0 to exit");
 
 			input = scanner.nextInt();
 			switch (input) {
@@ -115,7 +115,7 @@ public class PeerUI {
 					}
 					peer.modifyFile(file2);
 					break;
-				case 100:
+				case 0:
 					System.out.println("You choice to exit. Bye......");
 					flag = false;
 					break;
@@ -128,6 +128,7 @@ public class PeerUI {
 		System_Context.PUSH_APPROACH = false;
 		System.out.println("Operation finished! Thank you!");
 		scanner.close();
+		System.exit(0);
 	}
 
 	private void initDB() {
