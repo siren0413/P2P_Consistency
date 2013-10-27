@@ -89,6 +89,7 @@ public class PeerUI {
 		
 		while (flag) {
 			System.out.println("Operation menu for peer:");
+
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
@@ -96,6 +97,7 @@ public class PeerUI {
 				System.out.println("Enter 4 to refresh a file");
 			}
 			System.out.println("Enter 100 number to exit");
+
 
 			input = scanner.nextInt();
 			switch (input) {
@@ -139,11 +141,13 @@ public class PeerUI {
 					}
 					peer.modifyFile(file2);
 					break;
+
 				case 4 :
 					System.out.println("You choice to refresh an out dated file. Please give the file name.");
 					String filenameString = scanner.next();
 					peer.refreshFile(filenameString);
 					break;
+
 				case 100:
 					System.out.println("You choice to exit. Bye......");
 					flag = false;
@@ -157,6 +161,7 @@ public class PeerUI {
 		System_Context.PUSH_APPROACH = false;
 		System.out.println("Operation finished! Thank you!");
 		scanner.close();
+		System.exit(0);
 	}
 
 	private void initDB() {
