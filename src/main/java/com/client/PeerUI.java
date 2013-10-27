@@ -33,7 +33,7 @@ public class PeerUI {
 		initThreadService();
 	}
 
-	public void operations() {
+	public void operations()  {
 		Scanner scanner = new Scanner(System.in);
 
 		int input;
@@ -46,6 +46,7 @@ public class PeerUI {
 			System.out.println("Enter 3 for modify file");
 			System.out.println("Enter 4 for refresh a file.");
 			System.out.println("Enter 5 to pull expired file(s).");
+			System.out.println("Enter 6 to query a file's version.");
 			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
@@ -99,6 +100,11 @@ public class PeerUI {
 				case 5:
 					System.out.println("You choice to pull expired file(s).");
 					peer.pull();
+					break;
+				case 6:
+					System.out.println("Enter the file name (just the name) you want to query");
+					String fname = scanner.next();
+					System.out.println("The file version is :" + peer.testQueryFileVersion(fname));
 					break;
 				case 100:
 					System.out.println("You choice to exit. Bye......");

@@ -424,10 +424,11 @@ public class PeerDAO {
 		try {
 			conn = PeerHSQLDB.getConnection();
 			statement = conn.createStatement();
-			Date time_insert = new Date(System.currentTimeMillis());
-			Timestamp currentTime = new Timestamp(time_insert.getTime());
-			String sql = "select * from PeerFiles where " + currentTime + " > (last_modified + owner_ttr*1000)";
+			
+			String sql = "select * from PeerFiles ";
 			result = statement.executeQuery(sql);
+			
+			Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
 			while (result.next()) {
 				PeerInfo pInfo = new PeerInfo();
 				pInfo.setId(result.getString(1));
@@ -440,7 +441,10 @@ public class PeerDAO {
 				pInfo.setOwnerTTR(result.getInt(8));
 				pInfo.setLastModifieDate(result.getDate(9));
 				
-				peerInfolist.add(pInfo);
+				if (currentTimestamp.getTime() > (result.getTimestamp(9).getTime() + result.getInt(8)*1000) )
+					LOGGER.debug("File :[" +pInfo.getFileName()+"] TTR is expired. And the file version is : [" + pInfo.getFileVersion()+
+									"], file state is :[" +pInfo.getFileState()+"]");
+					peerInfolist.add(pInfo);
 			}
 
 		} finally {
@@ -468,18 +472,19 @@ public class PeerDAO {
 			statement = conn.createStatement();
 			String sql = "select * from PeerFiles where file_name like '" + fileName+ "'";
 			result = statement.executeQuery(sql);
+			LOGGER.debug("Query --> select * from PeerFiles where file_name like '" + fileName+ "'");
 			while (result.next()) {
-				PeerInfo pInfo = new PeerInfo();
-				pInfo.setId(result.getString(1));
-				pInfo.setFilePath(result.getString(2));
-				pInfo.setFileName(result.getString(3));
-				pInfo.setFileSize(result.getInt(4));
-				pInfo.setFileVersion(result.getInt(5));
-				pInfo.setFileState(result.getString(6));
-				pInfo.setOwnerIp(result.getString(7));
-				pInfo.setOwnerTTR(result.getInt(8));
-				pInfo.setLastModifieDate(result.getDate(9));
-						
+			    peerInfo = new PeerInfo();
+				peerInfo.setId(result.getString(1));
+				peerInfo.setFilePath(result.getString(2));
+				peerInfo.setFileName(result.getString(3));
+				peerInfo.setFileSize(result.getInt(4));
+				peerInfo.setFileVersion(result.getInt(5));
+				peerInfo.setFileState(result.getString(6));
+				peerInfo.setOwnerIp(result.getString(7));
+				peerInfo.setOwnerTTR(result.getInt(8));
+				peerInfo.setLastModifieDate(result.getDate(9));
+				
 			}
 		} finally {
 			try {
@@ -494,6 +499,7 @@ public class PeerDAO {
 				}
 			}
 		}
+		LOGGER.debug("Query result --> " + peerInfo);
 		return peerInfo;
 		
 	}
@@ -804,7 +810,7 @@ public class PeerDAO {
 			String sql;
 			sql = "UPDATE PeerFiles SET owner_ttr ='" + ownerTTR + "'  where file_name like '" + fileName + "'";
 			statement.executeQuery(sql);
-			LOGGER.info("File TTR updated to : [" + ownerTTR + "].");
+			
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -821,7 +827,7 @@ public class PeerDAO {
 				}
 			}
 		}
-		
+		LOGGER.debug("Update file : [" + fileName +"] TTR : [" + ownerTTR +"] successfully!");
 	}
 
 

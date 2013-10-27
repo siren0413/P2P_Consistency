@@ -191,7 +191,7 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 	public Object queryFile(String fileName) throws RemoteException{
 		 PeerInfo pInfo = null;
 		try {
-			pInfo = (PeerInfo) peerDAO.queryFile(fileName);
+			pInfo = (PeerInfo) peerDAO.getPeerInfo(fileName);
 		} catch (SQLException e) {
 			LOGGER.error("DAO error",e);
 		}
@@ -408,7 +408,7 @@ public class PeerTransfer extends UnicastRemoteObject implements IPeerTransfer {
 					LOGGER.debug("Add message to database, message from peer:" + clentIp);
 				}
 				
-				// check database, if cached file exits then mark it dirty
+				// check database, if cached file exits then mark it dirty, the state changed to "invalid"
 				if (peerDAO.checkFileAvailable(fileName)) {
 					LOGGER.debug("Got file in database,update file as invalid.");
 					peerDAO.markDirty(fileName);
