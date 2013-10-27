@@ -19,6 +19,8 @@
  * 		4. sendReport -- send report to server when data is not consistent.
  * 		5. listServerFile -- list all the files that available to download.
  * 		6. updateLocalDatabase -- update local database when file delete from disk.
+ * 		7. refreshFile -- refresh a file 
+ * 		8. modifyFile -- simulation modification of a file.
  * 
  */
 package com.client;
@@ -330,12 +332,7 @@ public class Peer {
 				
 		try {
 			if(peerDAO.findFile(fileName)== null) {
-				LOGGER.info("No file: [" + fileName + "] exits.");
-				return;
-			}
-			
-			if((peerDAO.getFileState(fileName)).equals("valid")) {
-				LOGGER.info("File is up to date. No need to refresh.");
+				LOGGER.debug("No file: [" + fileName + "] exits.");
 				return;
 			}
 			
@@ -516,13 +513,13 @@ public class Peer {
 	}
 	
 	public void pull() {
-		LOGGER.info("Start to pull expired files......");
+		LOGGER.debug("Start to pull expired files......");
 		
 		try {
-			String myip = InetAddress.getLocalHost().getHostAddress();
+			String myip = InetAddress.getLocalHost().getHostAddress()+":"+String.valueOf(System_Context.SERVICE_PORT);
 			List<PeerInfo> expiredFile = peerDAO.queryExpiredFile(myip);
 			if (expiredFile.isEmpty()) {
-				LOGGER.info("No file's TTR expired.");
+				LOGGER.debug("No file's TTR expired.");
 				return;
 			}
 						
@@ -564,7 +561,7 @@ public class Peer {
 			}
 			
 			if(expiredFile.size() != returnedFileInforList.size()) {
-				LOGGER.info("The returned file infor is not the same as requested.");
+				LOGGER.debug("The returned file infor is not the same as requested.");
 			}
 			
 			LOGGER.debug("The size of expired files is : " + expiredFile.size()+ ", and the size of returned file is : " + returnedFileInforList.size());
@@ -575,14 +572,15 @@ public class Peer {
 				PeerInfo expFileInfo = expiredFilesIterator.next();
 				String expFileName = expFileInfo.getFileName();
 				int expFileVersion = expFileInfo.getFileVersion();
-				System.out.println("The expired file is : [" + expFileName+"] and the file version is :["+expFileVersion+"]");
+				LOGGER.debug("The expired file is : [" + expFileName+"] and the file version is :["+expFileVersion+"]");
 				while(returnedFIterator.hasNext()) {
 					PeerInfo retFileInfo = returnedFIterator.next();
 					String retFileName = retFileInfo.getFileName();
 					int retFileVersion = retFileInfo.getFileVersion();
 					if(expFileName.equals(retFileName)) {
-						System.out.println("The returned file is : [" + expFileName+"] and the file version is :["+retFileVersion+"]");
+						LOGGER.debug("The returned file is : [" + expFileName+"] and the file version is :["+retFileVersion+"]");
 						if (expFileVersion < retFileVersion) {
+							LOGGER.debug("Refresh file: [" + expFileName + "]");
 							refreshFile(expFileName);
 							break;
 						}else if (expFileVersion == retFileVersion){

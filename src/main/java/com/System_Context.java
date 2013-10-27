@@ -1,4 +1,17 @@
 package com;
+/**
+ * NAME: 
+ * 		System_Context.java
+ * 
+ * PURPOSE: 
+ * 		value configurations such as service port, band width, push approach or pull approach and so on. 
+ * 
+ * COMPUTER HARDWARE AND/OR SOFTWARE LIMITATIONS: 
+ * 		JRE(1.7) required.
+ * 
+ * PROJECT: 
+ * 		P2P File sharing system
+ */
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;

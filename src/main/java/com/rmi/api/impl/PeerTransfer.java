@@ -12,10 +12,7 @@
  * 		P2P File sharing system
  * 
  * ALGORITHM DESCRIPTION: 
- * 		1. obtain -- get byte array of the file from other peer.
- * 		2. getFileLength -- get the length of file which to be download
- * 		3. getFilePath -- get the file path.
- * 		4. checkFileAvailable -- check if the file is exist on the peer.
+ * 		contain remote methods to implement peer operations. 
  * 
  */
 

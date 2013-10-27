@@ -1,5 +1,26 @@
 package com.client;
-
+/**
+ * NAME: 
+ * 		PeerUI.java
+ * 
+ * PURPOSE: 
+ * 		The menu for client to choice service
+ * 
+ * COMPUTER HARDWARE AND/OR SOFTWARE LIMITATIONS: 
+ * 		JRE(1.7) required.
+ * 
+ * PROJECT: 
+ * 		P2P File sharing system
+ * 
+ * ALGORITHM DESCRIPTION: 
+ * 		init programs:
+ * 		1. initDB()	-- init the database
+ * 		2. initResource -- check configuration file. 
+ * 		3. initRMIService -- register RMI
+ * 		4. initThreadSercie -- init thread to clean up expired messages.
+ * 		5. initPullApproach -- init thread to pull expired files
+ * 
+ */
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -71,6 +92,9 @@ public class PeerUI {
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
+			if(System_Context.PULL_APPROACH) {
+				System.out.println("Enter 4 to refresh a file");
+			}
 			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
@@ -114,6 +138,11 @@ public class PeerUI {
 						System.out.println(SystemUtil.getSimpleTime()+"File not found! Please check the file path.");
 					}
 					peer.modifyFile(file2);
+					break;
+				case 4 :
+					System.out.println("You choice to refresh an out dated file. Please give the file name.");
+					String filenameString = scanner.next();
+					peer.refreshFile(filenameString);
 					break;
 				case 100:
 					System.out.println("You choice to exit. Bye......");
