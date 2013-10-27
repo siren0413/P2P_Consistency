@@ -516,8 +516,11 @@ public class Peer {
 	}
 	
 	public void pull() {
+		LOGGER.info("Start to pull expired files......");
+		
 		try {
-			List<PeerInfo> expiredFile = peerDAO.queryExpiredFile();
+			String myip = InetAddress.getLocalHost().getHostAddress();
+			List<PeerInfo> expiredFile = peerDAO.queryExpiredFile(myip);
 			if (expiredFile.isEmpty()) {
 				LOGGER.info("No file's TTR expired.");
 				return;
@@ -596,6 +599,9 @@ public class Peer {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -683,22 +689,4 @@ public class Peer {
 		return v;
 	}
 	
-	private class PullService implements Runnable{
-
-		public void run() {
-			pull();			
-		}
-	}
-	
-	public void usingPullApproach(boolean flag) {
-		try {
-			(new Thread(new PullService())).start();
-			Thread.sleep(System_Context.TIME_TO_PULL*1000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-
 }

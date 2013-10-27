@@ -51,6 +51,9 @@ public class PeerUI {
 					break;
 				case "pull":
 					System_Context.PULL_APPROACH = true;
+					System.out.println("Please enter the time interval to pull as an integer. (eg. 10 for 10 second)");
+					int timetopull = scanner.nextInt();
+					System_Context.TIME_TO_PULL = timetopull;
 					method = false;
 					break;
 				default :
@@ -59,15 +62,15 @@ public class PeerUI {
 			}
 		}
 		
+		if(System_Context.PULL_APPROACH) {
+			initPullApproach();
+		}
 		
 		while (flag) {
 			System.out.println("Operation menu for peer:");
 			System.out.println("Enter 1 for upload file.");
 			System.out.println("Enter 2 for download file");
 			System.out.println("Enter 3 for modify file");
-			System.out.println("Enter 4 for refresh a file.");
-//			System.out.println("Enter 5 to pull expired file(s).");
-//			System.out.println("Enter 6 to query a file's version.");
 			System.out.println("Enter 100 number to exit");
 
 			input = scanner.nextInt();
@@ -87,13 +90,13 @@ public class PeerUI {
 						System.out.println("File upload failed.");
 					break;
 				case 2 :
-					System.out.println("You choice to download file. Please give file name");
+					System.out.println("You choice to download file. Please give file name.(eg. w1.txt)");
 					String fileName = scanner.next();
 					System.out.println("File name is : " + fileName);
-					System.out.println("Please give save file path.(including file name)");
+					System.out.println("Please give save file path.(including file name, eg: /home/user/Desktop/w1.txt)");
 					String savePath = scanner.next();
 					System.out.println("File save path is : " + savePath);
-					System.out.println("Please enter the band with:");
+					System.out.println("Please enter the band width:");
 					int band_width = scanner.nextInt();
 					System_Context.BAND_WIDTH = band_width;
 					boolean dl = peer.downloadFile(fileName, savePath);
@@ -111,21 +114,6 @@ public class PeerUI {
 						System.out.println(SystemUtil.getSimpleTime()+"File not found! Please check the file path.");
 					}
 					peer.modifyFile(file2);
-					break;
-				case 4:
-					System.out.println("You choice to refresh a file");
-					System.out.println("Please enter the file name.");
-					String filename = scanner.next();
-					peer.refreshFile(filename);
-					break;
-				case 5:
-					System.out.println("You choice to pull expired file(s).");
-					peer.pull();
-					break;
-				case 6:
-					System.out.println("Enter the file name (just the name) you want to query");
-					String fname = scanner.next();
-					System.out.println("The file version is :" + peer.testQueryFileVersion(fname));
 					break;
 				case 100:
 					System.out.println("You choice to exit. Bye......");
@@ -200,5 +188,19 @@ public class PeerUI {
 		timer.schedule(task, 0, 100000);
 
 	}
+	
+	private void initPullApproach() {
+		TimerTask task = new TimerTask() {
+
+			@Override
+			public void run() {
+				peer.pull();
+			}
+		};
+		Timer timer = new Timer();
+		timer.schedule(task, 0, System_Context.TIME_TO_PULL*1000);
+		
+	}
+	
 
 }

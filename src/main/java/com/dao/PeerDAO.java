@@ -419,13 +419,13 @@ public class PeerDAO {
 		
 	}
 	
-	public List<PeerInfo> queryExpiredFile() throws SQLException{
+	public List<PeerInfo> queryExpiredFile(String myip) throws SQLException{
 		List<PeerInfo> peerInfolist = new ArrayList<PeerInfo>();
 		try {
 			conn = PeerHSQLDB.getConnection();
 			statement = conn.createStatement();
 			
-			String sql = "select * from PeerFiles ";
+			String sql = "select * from PeerFiles where owner_ip not like '"+ myip +"'";
 			result = statement.executeQuery(sql);
 			
 			Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
